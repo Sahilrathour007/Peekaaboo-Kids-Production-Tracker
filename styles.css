@@ -489,6 +489,42 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+/* Marks a required field that was left empty/zero at submit time. Applied
+   directly to the input (not the label) so it works inside dynamic rows
+   (fabric components, garment sizes) without disturbing grid layout. */
+.field-invalid {
+  border-color: var(--danger) !important;
+  background: #fff1f3 !important;
+  box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.14);
+}
+
+/* Marks a whole dynamic row (fabric component / garment component) that has
+   at least one field-invalid input inside it, so the problem row stands out
+   even before the person spots the specific red field. */
+.row-invalid {
+  border-color: var(--danger) !important;
+  background: #fff8f8;
+}
+
+/* .size-grid fieldsets already have a border/padding, so row-invalid just
+   needs to recolor it. The dynamic component rows (fabric/garment) have no
+   border by default, so give them one explicitly when flagged. */
+.fabric-component-row.row-invalid,
+.garment-component-row.row-invalid {
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  padding: 8px;
+  margin: -1px -1px 9px -1px;
+}
+
+.field-invalid-note {
+  grid-column: 1 / -1;
+  margin-top: -4px;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 650;
+}
+
 .autocomplete {
   position: relative;
 }

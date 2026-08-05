@@ -119,6 +119,43 @@ let state = loadState();
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
+// --- Required-field highlighting -------------------------------------
+// Generic helpers used by every form's submit handler so a person can never
+// save an entry with a required number left blank/zero: the offending
+// field (and its row, if it's inside a dynamic fabric/garment row) gets a
+// red highlight, and the highlight clears itself as soon as the person
+// edits that field. This is on top of native `required` attributes, which
+// only catch empty fields — these helpers also catch "filled with 0",
+// which native HTML validation lets through.
+function markFieldInvalid(el) {
+  if (!el) return;
+  el.classList.add("field-invalid");
+  const row = el.closest(".fabric-component-row, .garment-component-row");
+  if (row) row.classList.add("row-invalid");
+}
+
+function clearFieldInvalid(el) {
+  if (!el) return;
+  el.classList.remove("field-invalid");
+  const row = el.closest(".fabric-component-row, .garment-component-row");
+  if (row && !row.querySelector(".field-invalid")) row.classList.remove("row-invalid");
+}
+
+function clearAllInvalid(scope = document) {
+  scope.querySelectorAll(".field-invalid").forEach((el) => el.classList.remove("field-invalid"));
+  scope.querySelectorAll(".row-invalid").forEach((el) => el.classList.remove("row-invalid"));
+}
+
+// Delegated so it works for inputs created after page load (fabric rows,
+// garment rows, the move-qty size grid, etc.) without wiring each one up
+// individually.
+document.addEventListener("input", (event) => {
+  if (event.target.classList?.contains("field-invalid")) clearFieldInvalid(event.target);
+});
+document.addEventListener("change", (event) => {
+  if (event.target.classList?.contains("field-invalid")) clearFieldInvalid(event.target);
+});
+
 function loadState() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -1576,6 +1613,8 @@ function updateReceiveTotal() {
 }
 
 function submitReceipt() {
+  clearFieldInvalid($("#receiveQty"));
+  clearFieldInvalid($("#receiveDate"));
   const entry = state.outsourcing.find((item) => item.id === $("#receiveEntrySelect").value);
   if (!entry) {
     alert("Pick which outsourcing entry this receipt is against.");
@@ -1584,15 +1623,18 @@ function submitReceipt() {
   const pending = getOutsourcingPendingQty(entry);
   const qty = toNumber($("#receiveQty").value);
   if (qty <= 0) {
+    markFieldInvalid($("#receiveQty"));
     alert("Enter at least one piece received.");
     return false;
   }
   if (qty > pending) {
+    markFieldInvalid($("#receiveQty"));
     alert(`Only ${formatQty(pending)} pieces are still pending on this entry.`);
     return false;
   }
   const date = $("#receiveDate").value;
   if (!date) {
+    markFieldInvalid($("#receiveDate"));
     alert("Pick the date received.");
     return false;
   }
@@ -1804,7 +1846,7 @@ function addFabricComponentRow(fabricCode = "", avgUsed = "", required = null) {
   wrapper.dataset.fabricCode = fabricCode;
   wrapper.innerHTML = `
     <input class="fabric-search" data-role="search" autocomplete="off" placeholder="Search style/nickname, fabric name, print, colour, or code">
-    <input class="fabric-avg-used" data-role="avgUsed" type="number" min="0" step="0.01" placeholder="Avg used/piece (m)" value="${avgUsed}">
+    <input class="fabric-avg-used" data-role="avgUsed" type="number" min="0.01" step="0.01" placeholder="Avg used/piece (m) \u2014 required" value="${avgUsed}">
     <input class="fabric-print" data-role="printType" readonly placeholder="Print">
     <input class="fabric-colour" data-role="colour" readonly placeholder="Colour">
     <button class="icon-button danger" type="button" data-remove-fabric-row aria-label="Remove this fabric" data-tooltip="Remove">
@@ -2065,6 +2107,20 @@ function bindEvents() {
   $("#fabricForm").addEventListener("submit", (event) => {
     event.preventDefault();
     const form = event.currentTarget;
+    clearAllInvalid(form);
+    let hasInvalid = false;
+    if (!(toNumber(form.qty.value) > 0)) {
+      markFieldInvalid(form.qty);
+      hasInvalid = true;
+    }
+    if (!(toNumber(form.rolls.value) > 0)) {
+      markFieldInvalid(form.rolls);
+      hasInvalid = true;
+    }
+    if (hasInvalid) {
+      alert("Qty per roll and Rolls must both be greater than 0 before saving. The missing fields are highlighted in red.");
+      return;
+    }
     updateFabricTotal();
     const fabric = {
       id: crypto.randomUUID(),
@@ -2181,12 +2237,34 @@ function bindEvents() {
   $("#cuttingForm").addEventListener("submit", (event) => {
     event.preventDefault();
     const form = event.currentTarget;
+    clearAllInvalid(form);
     const { components, totalUsed, totalCorrection } = getCuttingCalculation();
-    const unresolved = components.some((entry) => !entry.fabric);
-    if (!components.length || unresolved) {
-      alert("Please pick a valid received fabric for every fabric row before saving.");
+    const fabricRows = readFabricComponentRows();
+
+    // Every fabric row needs a resolved fabric AND a positive avg-used
+    // figure — a row that saves with avg-used left blank/0 is exactly how a
+    // batch ends up showing 20 pieces cut but "0 m" used and remaining
+    // fabric never dropping (see cutting table: fabric consumption silently
+    // never gets recorded). Both checks run together so every bad row gets
+    // highlighted in one pass instead of the person hitting Save repeatedly.
+    let hasInvalid = false;
+    fabricRows.forEach((entry) => {
+      const searchInput = entry.row.querySelector('[data-role="search"]');
+      const avgInput = entry.row.querySelector('[data-role="avgUsed"]');
+      if (!entry.fabric) {
+        markFieldInvalid(searchInput);
+        hasInvalid = true;
+      }
+      if (!(entry.avgFabricUsed > 0)) {
+        markFieldInvalid(avgInput);
+        hasInvalid = true;
+      }
+    });
+    if (!fabricRows.length || hasInvalid) {
+      alert("Every fabric row needs a valid fabric AND an average fabric used per piece greater than 0 before saving. The missing fields are highlighted in red.");
       return;
     }
+
     const garmentRows = readGarmentComponentRows();
     if (!garmentRows.length) {
       alert("Add at least one garment produced from this cut.");
@@ -2199,7 +2277,10 @@ function bindEvents() {
     }));
     const emptyGarment = garments.find((garment) => getPieces(garment.sizes) <= 0);
     if (emptyGarment) {
-      alert(`Add at least one piece for ${labelType(emptyGarment.type)} across the size grid.`);
+      const emptyRowIndex = garments.indexOf(emptyGarment);
+      const emptyRowEl = $$(".garment-component-row")[emptyRowIndex];
+      if (emptyRowEl) emptyRowEl.classList.add("row-invalid");
+      alert(`Add at least one piece for ${labelType(emptyGarment.type)} across the size grid. The empty row is highlighted in red.`);
       return;
     }
 
@@ -2305,7 +2386,19 @@ function bindEvents() {
   $("#outsourcingForm").addEventListener("submit", (event) => {
     event.preventDefault();
     const form = event.currentTarget;
+    clearAllInvalid(form);
     const sizes = Object.fromEntries(SIZES.map(([name]) => [name, toNumber(form[name].value)]));
+    // The size-wise quantity fieldset has no native `required` (each size
+    // input is individually optional — only the total matters), so an entry
+    // with every size left at 0 would otherwise save silently with no
+    // pieces actually sent out.
+    if (getPieces(sizes) <= 0) {
+      const sizeGrid = form.querySelector(".size-grid:not(.accessory-grid)");
+      SIZES.forEach(([name]) => markFieldInvalid(form[name]));
+      if (sizeGrid) sizeGrid.classList.add("row-invalid");
+      alert("Enter at least one piece across the size-wise quantity grid before saving. The empty fields are highlighted in red.");
+      return;
+    }
     const sourceCuttingId = form.sourceCuttingId.value || null;
     const sourceCutting = sourceCuttingId ? state.cuttings.find((item) => item.id === sourceCuttingId) : null;
     if (sourceCutting) {
@@ -2381,7 +2474,14 @@ function bindEvents() {
     if (!moveQtyTarget) return;
     const cutting = state.cuttings.find((item) => item.id === moveQtyTarget.cuttingId);
     if (!cutting) return;
-    const ok = moveQuantityForward(cutting, moveQtyTarget.stage, readMoveQtySizes());
+    const selected = readMoveQtySizes();
+    $$("[data-move-qty-size]").forEach((input) => input.classList.remove("field-invalid"));
+    if (getPieces(selected) <= 0) {
+      $$("[data-move-qty-size]").forEach((input) => markFieldInvalid(input));
+      alert("Enter at least one piece to send forward before saving.");
+      return;
+    }
+    const ok = moveQuantityForward(cutting, moveQtyTarget.stage, selected);
     if (!ok) return; // moveQuantityForward already alerted on invalid input
     saveState();
     $("#moveQtyDialog").close();
@@ -2415,8 +2515,17 @@ function bindEvents() {
   $("#accessoryStockForm").addEventListener("submit", (event) => {
     event.preventDefault();
     const form = event.currentTarget;
+    clearAllInvalid(form);
     if (form.accessoryType.value === "other" && !form.label.value.trim()) {
+      markFieldInvalid(form.label);
       alert('Please name this "Other" accessory (e.g. Lace, Dori).');
+      return;
+    }
+    // qty has `required` + min="0" in the HTML, which lets a literal 0
+    // through native validation — this catches that case explicitly.
+    if (!(toNumber(form.qty.value) > 0)) {
+      markFieldInvalid(form.qty);
+      alert("Enter a quantity received greater than 0 before saving.");
       return;
     }
     const sku = form.sku.value.trim();
