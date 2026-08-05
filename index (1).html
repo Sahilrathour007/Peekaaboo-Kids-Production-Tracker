@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peekaaboo Production Tracker</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">Peekaaboo Kids</p>
+      <h1>Production Tracker</h1>
+    </div>
+    <div class="header-actions">
+      <span class="sync-status" id="syncStatus" role="status">Local mode</span>
+      <button class="icon-button" id="exportBtn" type="button" aria-label="Export data" data-tooltip="Export data">
+        <i data-lucide="download" aria-hidden="true"></i>
+      </button>
+      <label class="icon-button import-button" aria-label="Import data" data-tooltip="Import data">
+        <i data-lucide="upload" aria-hidden="true"></i>
+        <input id="importInput" type="file" accept="application/json">
+      </label>
+      <button class="icon-button danger" id="resetBtn" type="button" aria-label="Clear all data" data-tooltip="Clear all data">
+        <i data-lucide="trash-2" aria-hidden="true"></i>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <section class="stats-grid" aria-label="Production summary">
+      <article class="stat">
+        <span>Fabric stock</span>
+        <strong id="stockMeters">0 m</strong>
+      </article>
+      <article class="stat">
+        <span>Cut pieces</span>
+        <strong id="cutPieces">0</strong>
+      </article>
+      <article class="stat">
+        <span>Open batches</span>
+        <strong id="openBatches">0</strong>
+      </article>
+      <article class="stat">
+        <span>Accessories due</span>
+        <strong id="accessoryDue">0</strong>
+      </article>
+      <article class="stat">
+        <span>Outsourcing amount</span>
+        <strong id="outsourcingAmount">0</strong>
+      </article>
+      <article class="stat">
+        <span>Finished goods (pieces)</span>
+        <strong id="finishedGoodsPieces">0</strong>
+      </article>
+    </section>
+
+    <nav class="tabs" aria-label="Main sections">
+      <button class="tab active" type="button" data-tab="overview">
+        <i data-lucide="layout-dashboard" aria-hidden="true"></i>
+        Overview
+      </button>
+      <button class="tab entry-tab" type="button" data-tab="fabric">
+        <i data-lucide="layers-3" aria-hidden="true"></i>
+        Fabric inventory
+      </button>
+      <button class="tab entry-tab" type="button" data-tab="cutting">
+        <i data-lucide="scissors" aria-hidden="true"></i>
+        Cutting schedule
+      </button>
+      <button class="tab" type="button" data-tab="cutting-complete">
+        <i data-lucide="check-circle" aria-hidden="true"></i>
+        Cutting complete
+      </button>
+      <button class="tab" type="button" data-tab="inhouse-stitching">
+        <i data-lucide="shirt" aria-hidden="true"></i>
+        In-house stitching
+      </button>
+      <button class="tab" type="button" data-tab="kaaj-button">
+        <i data-lucide="link" aria-hidden="true"></i>
+        Kaaj/Button
+      </button>
+      <button class="tab" type="button" data-tab="handwork">
+        <i data-lucide="hand" aria-hidden="true"></i>
+        Handwork
+      </button>
+      <button class="tab" type="button" data-tab="dhaga-cutting">
+        <i data-lucide="scissors" aria-hidden="true"></i>
+        Dhaga Cutting
+      </button>
+      <button class="tab" type="button" data-tab="finished-goods">
+        <i data-lucide="warehouse" aria-hidden="true"></i>
+        Finished Goods
+      </button>
+      <button class="tab entry-tab" type="button" data-tab="outsourcing">
+        <i data-lucide="truck" aria-hidden="true"></i>
+        Outsourcing
+      </button>
+      <button class="tab entry-tab" type="button" data-tab="incoming-material">
+        <i data-lucide="package-open" aria-hidden="true"></i>
+        Incoming material
+      </button>
+      <button class="tab entry-tab" type="button" data-tab="accessories">
+        <i data-lucide="package-check" aria-hidden="true"></i>
+        Accessories
+      </button>
+    </nav>
+
+    <section class="tab-panel active" id="overviewPanel">
+      <div class="section-heading">
+        <div>
+          <h2>Overview</h2>
+          <p>Every cutting batch by SKU and common name, with size-wise quantity and where it currently stands. Batches move between these automatically as you advance them through the stage tabs &mdash; freshly cut sits in "Cutting complete", anything past that and before Finished Goods counts as WIP (with its exact stage shown), and completed batches land in "Finished goods".</p>
+        </div>
+      </div>
+      <div class="filter-tabs" id="overviewFilters" role="group" aria-label="Filter by status">
+        <button class="filter-tab active" type="button" data-overview-filter="all">All</button>
+        <button class="filter-tab" type="button" data-overview-filter="cutting-schedule">Cutting complete</button>
+        <button class="filter-tab" type="button" data-overview-filter="wip">WIP</button>
+        <button class="filter-tab" type="button" data-overview-filter="finished-goods">Finished goods</button>
+      </div>
+      <div class="table-shell">
+        <table>
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>Common name</th>
+              <th>Garment</th>
+              <th class="num">Pieces</th>
+              <th>Status</th>
+              <th>Current stage</th>
+            </tr>
+          </thead>
+          <tbody id="overviewRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="fabricPanel">
+      <div class="section-heading">
+        <div>
+          <h2>Fabric inventory</h2>
+          <p>Add fabric receipts and keep the generated code attached to every cutting entry. Search by the style/nickname to auto-fill fabric, print, and colour &mdash; or skip it and type those three fields directly if you're entering straight from an invoice.</p>
+        </div>
+      </div>
+      <form class="form-grid" id="fabricForm">
+        <label>Search by style / nickname (optional) <input name="styleSearch" autocomplete="off" placeholder="e.g. Pathan, Boys Saavan, Monday Pant"></label>
+        <label>Fabric name <input required name="name" autocomplete="off" placeholder="Foil Holland"></label>
+        <label>Print type <input required name="printType" autocomplete="off" placeholder="Floral"></label>
+        <label>Colour <input required name="colour" autocomplete="off" placeholder="Pink"></label>
+        <label>Date received <input required name="date" type="date"></label>
+        <label>Fabric code <input required readonly name="codePreview" autocomplete="off" placeholder="Auto"></label>
+        <label>Qty per roll (m) <input required name="qty" type="number" min="0" step="0.01" placeholder="150"></label>
+        <label>Rolls <input required name="rolls" type="number" min="1" step="1" placeholder="4"></label>
+        <label>Total length <input required readonly name="totalLength" type="number" min="0" step="0.01" placeholder="600"></label>
+        <button class="primary-action" type="submit">
+          <i data-lucide="plus" aria-hidden="true"></i>
+          Add fabric
+        </button>
+      </form>
+      <div class="table-shell">
+        <table>
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Fabric</th>
+              <th>Print</th>
+              <th>Colour</th>
+              <th>Date</th>
+              <th class="num">Rolls</th>
+              <th class="num">Total</th>
+              <th class="num">Available</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="fabricRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="cuttingPanel">
+      <div class="section-heading">
+        <div>
+          <h2>Cutting schedule</h2>
+          <p>Record size output, fabric used, correction factor, and route the batch after cutting. Pick a common name or SKU below and matching fabric row(s) fill in automatically for styles that already exist &mdash; add or edit rows for anything new or multi-fabric.</p>
+        </div>
+      </div>
+      <form class="cutting-layout" id="cuttingForm">
+        <div class="form-grid compact">
+          <label>Common name <input required name="commonName" autocomplete="off" placeholder="London Pink"></label>
+          <label>SKU code <input required name="sku" autocomplete="off" placeholder="19DoFoLoSoI"></label>
+          <label>Date <input required name="entryDate" type="date"></label>
+          <label>Gender
+            <select required name="gender">
+              <option value="boys">Boys</option>
+              <option value="girls">Girls</option>
+            </select>
+          </label>
+          <label>Correction factor (%) <input required name="correctionPercent" type="number" min="0" step="0.1" value="5"></label>
+        </div>
+        <div class="fabric-components-section">
+          <div class="fabric-components-header">
+            <span>Fabrics used <small>Search by style/nickname, fabric name, print, colour, or code. Add a row per fabric for coord sets, panels, or trims cut from a different roll.</small></span>
+            <button class="secondary-action" type="button" id="addFabricRowBtn">
+              <i data-lucide="plus" aria-hidden="true"></i>
+              Add fabric
+            </button>
+          </div>
+          <div class="fabric-row-legend" aria-hidden="true">
+            <span>Fabric</span>
+            <span>Avg used/piece (m)</span>
+            <span>Print</span>
+            <span>Colour</span>
+            <span></span>
+          </div>
+          <div id="fabricComponentsContainer"></div>
+        </div>
+        <div class="fabric-components-section" id="garmentComponentsSection">
+          <div class="fabric-components-header">
+            <span>Garments produced <small>Add a row per garment cut together from this fabric (e.g. Kurta + Pant cut as a set) and enter that garment's own size split. For a set cut from a shared roll, the fabric average you entered above already covers the whole set (e.g. Kurta + Pant together) &mdash; it's applied once per set, not once per garment, so it is never double-counted. Saving creates a separate batch per garment, so downstream stitching, accessories, and stock all track them individually.</small></span>
+            <button class="secondary-action" type="button" id="addGarmentRowBtn">
+              <i data-lucide="plus" aria-hidden="true"></i>
+              Add garment
+            </button>
+          </div>
+          <div id="garmentComponentsContainer"></div>
+        </div>
+        <div class="calculation-strip" id="cuttingPreview">
+          <span>Fabric used: <strong>180 m</strong></span>
+          <span>Correction: <strong>30 m</strong></span>
+          <span>Remaining after cut: <strong>0 m</strong></span>
+        </div>
+        <button class="primary-action" type="submit">
+          <i data-lucide="clipboard-check" aria-hidden="true"></i>
+          Save cutting entry
+        </button>
+      </form>
+      <div class="table-shell">
+        <table>
+          <thead>
+            <tr>
+              <th>Batch</th>
+              <th>SKU</th>
+              <th>Name</th>
+              <th>Garment</th>
+              <th>Date</th>
+              <th>Gender</th>
+              <th>Fabric</th>
+              <th class="num">Pieces</th>
+              <th class="num">Used</th>
+              <th class="num">Remaining</th>
+              <th>Route</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="cuttingRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="cutting-completePanel">
+      <div class="section-heading">
+        <div>
+          <h2>Cutting complete</h2>
+          <p>Freshly cut batches waiting to move into stitching.</p>
+        </div>
+      </div>
+      <div class="stage-board" id="stageBoard-cutting-complete"></div>
+    </section>
+
+    <section class="tab-panel" id="inhouse-stitchingPanel">
+      <div class="section-heading">
+        <div>
+          <h2>In-house stitching</h2>
+          <p>Batches being stitched in-house. Outsource part of it, or move on to Kaaj/Button, Handwork, or straight to Dhaga Cutting.</p>
+        </div>
+      </div>
+      <div class="stage-board" id="stageBoard-inhouse-stitching"></div>
+    </section>
+
+    <section class="tab-panel" id="kaaj-buttonPanel">
+      <div class="section-heading">
+        <div>
+          <h2>Kaaj/Button</h2>
+          <p>Kaaj/Button is always vendor work. Outsource it, or skip straight to Handwork or Dhaga Cutting.</p>
+        </div>
+      </div>
+      <div class="stage-board" id="stageBoard-kaaj-button"></div>
+    </section>
+
+    <section class="tab-panel" id="handworkPanel">
+      <div class="section-heading">
+        <div>
+          <h2>Handwork</h2>
+          <p>Batches in hand-finishing. Outsource it, or move on to Dhaga Cutting when done.</p>
+        </div>
+      </div>
+      <div class="stage-board" id="stageBoard-handwork"></div>
+    </section>
+
+    <section class="tab-panel" id="dhaga-cuttingPanel">
+      <div class="section-heading">
+        <div>
+          <h2>Dhaga Cutting</h2>
+          <p>Final thread-cutting stage. Move a batch to Finished Goods once it's ready to stock.</p>
+        </div>
+      </div>
+      <div class="stage-board" id="stageBoard-dhaga-cutting"></div>
+    </section>
+
+    <section class="tab-panel" id="finished-goodsPanel">
+      <div class="section-heading">
+        <div>
+          <h2>Finished Goods Inventory</h2>
+          <p>Completed batches shifted out of production and into finished goods stock.</p>
+        </div>
+      </div>
+      <div class="stage-board" id="stageBoard-finished-goods"></div>
+    </section>
+
+    <section class="tab-panel" id="outsourcingPanel">
+      <div class="section-heading">
+        <div>
+          <h2>Outsourcing</h2>
+          <p>Record vendor work for stitching, Kaaj/Button, and handwork with size-wise quantity, rate, delivery date, and accessories.</p>
+        </div>
+      </div>
+      <div class="fabric-components-section">
+        <div class="fabric-components-header">
+          <span>Out for stitching<small>Fully outsourced batches — waiting on the vendor. Move forward once returned.</small></span>
+        </div>
+        <div class="stage-board" id="stageBoard-outsource-stitching"></div>
+      </div>
+      <form class="cutting-layout" id="outsourcingForm">
+        <div class="source-hint" id="outsourcingHint" hidden>
+          <span id="outsourcingHintText"></span>
+          <button type="button" class="secondary-action" id="clearSourceLink">Clear link</button>
+        </div>
+        <input type="hidden" name="sourceCuttingId" value="">
+        <div class="form-grid compact">
+          <label>Work type
+            <select required name="workType">
+              <option value="Stitching">Stitching</option>
+              <option value="Kaaj/Button">Kaaj/Button</option>
+              <option value="Handwork">Handwork</option>
+            </select>
+          </label>
+          <label>Vendor name <input required name="vendorName" autocomplete="off" placeholder="Vendor name"></label>
+          <label>Common name <input required name="commonName" autocomplete="off" placeholder="London Pink"></label>
+          <label>SKU code <input required name="sku" autocomplete="off" placeholder="19DoFoLoSoI"></label>
+          <label>Rate <input required name="rate" type="number" min="0" step="0.01" placeholder="25"></label>
+          <label>Total amount <input required readonly name="totalAmount" type="number" min="0" step="0.01" placeholder="0"></label>
+          <label>Delivery date <input required name="deliveryDate" type="date"></label>
+        </div>
+        <fieldset class="size-grid">
+          <legend>Size-wise quantity</legend>
+          <label>1-2 Yr <input name="size_1_2" type="number" min="0" step="1" value="0"></label>
+          <label>2-3 Yr <input name="size_2_3" type="number" min="0" step="1" value="0"></label>
+          <label>3-4 Yr <input name="size_3_4" type="number" min="0" step="1" value="0"></label>
+          <label>4-5 Yr <input name="size_4_5" type="number" min="0" step="1" value="0"></label>
+          <label>5-6 Yr <input name="size_5_6" type="number" min="0" step="1" value="0"></label>
+          <label>6-8 Yr <input name="size_6_8" type="number" min="0" step="1" value="0"></label>
+          <label>8-10 Yr <input name="size_8_10" type="number" min="0" step="1" value="0"></label>
+        </fieldset>
+        <fieldset class="size-grid accessory-grid">
+          <legend>Additional accessories</legend>
+          <label>Elastic <input name="elastic" type="number" min="0" step="1" value="0"></label>
+          <label>Button <input name="button" type="number" min="0" step="1" value="0"></label>
+          <label>Tag <input name="tag" type="number" min="0" step="1" value="0"></label>
+          <label>Other <input name="otherAccessory" autocomplete="off" placeholder="Lace, dori, etc."></label>
+        </fieldset>
+        <div class="calculation-strip" id="outsourcingPreview">
+          <span>Total quantity: <strong>0</strong></span>
+          <span>Total amount: <strong>0</strong></span>
+        </div>
+        <button class="primary-action" type="submit">
+          <i data-lucide="plus" aria-hidden="true"></i>
+          Add outsourcing entry
+        </button>
+      </form>
+      <div class="table-shell">
+        <table>
+          <thead>
+            <tr>
+              <th>Work</th>
+              <th>Vendor</th>
+              <th>SKU</th>
+              <th>Name</th>
+              <th class="num">Qty</th>
+              <th class="num">Rate</th>
+              <th class="num">Amount</th>
+              <th>Delivery</th>
+              <th>Accessories</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="outsourcingRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="incoming-materialPanel">
+      <div class="section-heading">
+        <div>
+          <h2>Incoming outsourcing material</h2>
+          <p>Log what comes back from vendors for stitching, Kaaj/Button, and handwork — partial or full — and track pending quantity, balance amount, and the revised delivery date for whatever's still out.</p>
+        </div>
+        <button class="primary-action" type="button" id="addReceiptBtn">
+          <i data-lucide="plus" aria-hidden="true"></i>
+          Log receipt
+        </button>
+      </div>
+      <div class="table-shell">
+        <table>
+          <thead>
+            <tr>
+              <th>Work</th>
+              <th>Vendor</th>
+              <th>SKU</th>
+              <th>Name</th>
+              <th class="num">Sent</th>
+              <th class="num">Received</th>
+              <th class="num">Pending qty</th>
+              <th class="num">Amount</th>
+              <th class="num">Paid</th>
+              <th class="num">Amount left</th>
+              <th>Pending delivery</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="incomingMaterialRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="accessoriesPanel">
+      <div class="section-heading">
+        <div>
+          <h2>Accessory stock</h2>
+          <p>Log accessory purchases and see received vs. required (from accessory rules) at a glance.</p>
+        </div>
+      </div>
+      <form class="form-grid compact" id="accessoryStockForm">
+        <label>Accessory type
+          <select required name="accessoryType" id="accessoryStockType">
+            <option value="elastic">Elastic</option>
+            <option value="button">Button</option>
+            <option value="tag">Tag</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <label>Name (for "Other") <input name="label" autocomplete="off" placeholder="Lace, dori, etc."></label>
+        <label>Linked SKU (optional) <input name="sku" autocomplete="off" placeholder="Leave blank for general stock"></label>
+        <label>Quantity received <input required name="qty" type="number" min="0" step="1" placeholder="500"></label>
+        <label>Date received <input required name="date" type="date"></label>
+        <button class="primary-action" type="submit">
+          <i data-lucide="plus" aria-hidden="true"></i>
+          Add stock
+        </button>
+      </form>
+      <div class="table-shell">
+        <table>
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Name</th>
+              <th>Linked to</th>
+              <th>Date</th>
+              <th class="num">Qty received</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="accessoryStockRows"></tbody>
+        </table>
+      </div>
+
+      <div class="section-heading" style="margin-top: 28px;">
+        <div>
+          <h2>Stock balance</h2>
+          <p>Received minus required, using accessory rules against all open batches. "Other" accessories aren't rule-linked, so required shows as &mdash; (track manually).</p>
+        </div>
+      </div>
+      <div class="table-shell">
+        <table>
+          <thead>
+            <tr>
+              <th>Accessory</th>
+              <th class="num">Received</th>
+              <th class="num">Required</th>
+              <th class="num">Balance</th>
+            </tr>
+          </thead>
+          <tbody id="accessoryBalanceRows"></tbody>
+        </table>
+      </div>
+
+      <div class="section-heading" style="margin-top: 28px;">
+        <div>
+          <h2>Accessory requirement by batch</h2>
+          <p>Each cutting entry calculates requirements from total pieces and garment type.</p>
+        </div>
+      </div>
+      <div class="table-shell">
+        <table>
+          <thead>
+            <tr>
+              <th>Batch</th>
+              <th>Style</th>
+              <th>Type</th>
+              <th class="num">Pieces</th>
+              <th class="num">Elastic</th>
+              <th class="num">Buttons</th>
+              <th class="num">Tags</th>
+            </tr>
+          </thead>
+          <tbody id="accessoryRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <template id="emptyState">
+    <tr><td class="empty" colspan="8">No entries yet.</td></tr>
+  </template>
+
+  <dialog id="moveQtyDialog" class="split-dialog">
+    <form id="moveQtyForm" method="dialog">
+      <h2 id="moveQtyDialogTitle">Send pieces forward</h2>
+      <p id="moveQtySubtitle" class="split-dialog-subtitle"></p>
+      <div id="moveQtySizeGrid" class="split-dialog-grid"></div>
+      <p id="moveQtyTotal" class="split-dialog-total"></p>
+      <div class="row-actions split-dialog-actions">
+        <button type="button" class="secondary-action" data-move-qty-cancel>Cancel</button>
+        <button type="submit" class="primary-action">Send</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="receiveDialog" class="split-dialog">
+    <form id="receiveForm" method="dialog">
+      <h2>Log incoming receipt</h2>
+      <label>Outsourcing entry
+        <select required id="receiveEntrySelect"></select>
+      </label>
+      <p id="receiveSubtitle" class="split-dialog-subtitle"></p>
+      <div class="split-dialog-grid">
+        <label>Received quantity
+          <input required id="receiveQty" type="number" min="0" step="1" value="0">
+          <small id="receiveQtyMax"></small>
+        </label>
+        <label>Date received
+          <input required id="receiveDate" type="date">
+        </label>
+        <label>Amount paid
+          <input required id="receiveAmountPaid" type="number" min="0" step="0.01" value="0">
+          <small id="receiveAmountLeftHint"></small>
+        </label>
+        <label>Pending delivery date
+          <input id="receivePendingDate" type="date">
+          <small>For whatever's still with the vendor after this receipt</small>
+        </label>
+      </div>
+      <p id="receiveTotal" class="split-dialog-total"></p>
+      <div class="row-actions split-dialog-actions">
+        <button type="button" class="secondary-action" data-receive-cancel>Cancel</button>
+        <button type="submit" class="primary-action">Log receipt</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="sku-database.js"></script>
+  <script src="accessory-rules.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
