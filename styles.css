@@ -525,6 +525,14 @@ button:focus-visible {
   font-weight: 650;
 }
 
+/* Red asterisk marker next to the text of any field/section that must be
+   filled before an entry can be saved, across every form and dialog. */
+.req {
+  color: var(--danger);
+  margin-left: 2px;
+  font-weight: 800;
+}
+
 .autocomplete {
   position: relative;
 }

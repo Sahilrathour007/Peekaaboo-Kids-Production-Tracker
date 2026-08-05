@@ -1920,7 +1920,7 @@ function addGarmentComponentRow(type = "", label = "") {
       <i data-lucide="trash-2" aria-hidden="true"></i>
     </button>
     <fieldset class="size-grid garment-size-grid" data-role="ownSizeGrid">
-      <legend>Sizes for this garment</legend>
+      <legend>Sizes for this garment<span class="req">*</span></legend>
       ${SIZES.map(([name, sizeLabel]) => `<label>${sizeLabel} <input type="number" min="0" step="1" value="0" data-size="${name}"></label>`).join("")}
     </fieldset>
   `;

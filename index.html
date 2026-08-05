@@ -146,13 +146,13 @@
       </div>
       <form class="form-grid" id="fabricForm">
         <label>Search by style / nickname (optional) <input name="styleSearch" autocomplete="off" placeholder="e.g. Pathan, Boys Saavan, Monday Pant"></label>
-        <label>Fabric name <input required name="name" autocomplete="off" placeholder="Foil Holland"></label>
-        <label>Print type <input required name="printType" autocomplete="off" placeholder="Floral"></label>
-        <label>Colour <input required name="colour" autocomplete="off" placeholder="Pink"></label>
-        <label>Date received <input required name="date" type="date"></label>
+        <label>Fabric name<span class="req">*</span> <input required name="name" autocomplete="off" placeholder="Foil Holland"></label>
+        <label>Print type<span class="req">*</span> <input required name="printType" autocomplete="off" placeholder="Floral"></label>
+        <label>Colour<span class="req">*</span> <input required name="colour" autocomplete="off" placeholder="Pink"></label>
+        <label>Date received<span class="req">*</span> <input required name="date" type="date"></label>
         <label>Fabric code <input required readonly name="codePreview" autocomplete="off" placeholder="Auto"></label>
-        <label>Qty per roll (m) <input required name="qty" type="number" min="0" step="0.01" placeholder="150"></label>
-        <label>Rolls <input required name="rolls" type="number" min="1" step="1" placeholder="4"></label>
+        <label>Qty per roll (m)<span class="req">*</span> <input required name="qty" type="number" min="0" step="0.01" placeholder="150"></label>
+        <label>Rolls<span class="req">*</span> <input required name="rolls" type="number" min="1" step="1" placeholder="4"></label>
         <label>Total length <input required readonly name="totalLength" type="number" min="0" step="0.01" placeholder="600"></label>
         <button class="primary-action" type="submit">
           <i data-lucide="plus" aria-hidden="true"></i>
@@ -188,28 +188,28 @@
       </div>
       <form class="cutting-layout" id="cuttingForm">
         <div class="form-grid compact">
-          <label>Common name <input required name="commonName" autocomplete="off" placeholder="London Pink"></label>
-          <label>SKU code <input required name="sku" autocomplete="off" placeholder="19DoFoLoSoI"></label>
-          <label>Date <input required name="entryDate" type="date"></label>
-          <label>Gender
+          <label>Common name<span class="req">*</span> <input required name="commonName" autocomplete="off" placeholder="London Pink"></label>
+          <label>SKU code<span class="req">*</span> <input required name="sku" autocomplete="off" placeholder="19DoFoLoSoI"></label>
+          <label>Date<span class="req">*</span> <input required name="entryDate" type="date"></label>
+          <label>Gender<span class="req">*</span>
             <select required name="gender">
               <option value="boys">Boys</option>
               <option value="girls">Girls</option>
             </select>
           </label>
-          <label>Correction factor (%) <input required name="correctionPercent" type="number" min="0" step="0.1" value="5"></label>
+          <label>Correction factor (%)<span class="req">*</span> <input required name="correctionPercent" type="number" min="0" step="0.1" value="5"></label>
         </div>
         <div class="fabric-components-section">
           <div class="fabric-components-header">
-            <span>Fabrics used <small>Search by style/nickname, fabric name, print, colour, or code. Add a row per fabric for coord sets, panels, or trims cut from a different roll.</small></span>
+            <span>Fabrics used<span class="req">*</span> <small>Search by style/nickname, fabric name, print, colour, or code. Add a row per fabric for coord sets, panels, or trims cut from a different roll.</small></span>
             <button class="secondary-action" type="button" id="addFabricRowBtn">
               <i data-lucide="plus" aria-hidden="true"></i>
               Add fabric
             </button>
           </div>
           <div class="fabric-row-legend" aria-hidden="true">
-            <span>Fabric</span>
-            <span>Avg used/piece (m)</span>
+            <span>Fabric<span class="req">*</span></span>
+            <span>Avg used/piece (m)<span class="req">*</span></span>
             <span>Print</span>
             <span>Colour</span>
             <span></span>
@@ -218,7 +218,7 @@
         </div>
         <div class="fabric-components-section" id="garmentComponentsSection">
           <div class="fabric-components-header">
-            <span>Garments produced <small>Add a row per garment cut together from this fabric (e.g. Kurta + Pant cut as a set) and enter that garment's own size split. For a set cut from a shared roll, the fabric average you entered above already covers the whole set (e.g. Kurta + Pant together) &mdash; it's applied once per set, not once per garment, so it is never double-counted. Saving creates a separate batch per garment, so downstream stitching, accessories, and stock all track them individually.</small></span>
+            <span>Garments produced<span class="req">*</span> <small>Add a row per garment cut together from this fabric (e.g. Kurta + Pant cut as a set) and enter that garment's own size split. For a set cut from a shared roll, the fabric average you entered above already covers the whole set (e.g. Kurta + Pant together) &mdash; it's applied once per set, not once per garment, so it is never double-counted. Saving creates a separate batch per garment, so downstream stitching, accessories, and stock all track them individually.</small></span>
             <button class="secondary-action" type="button" id="addGarmentRowBtn">
               <i data-lucide="plus" aria-hidden="true"></i>
               Add garment
@@ -339,22 +339,22 @@
         </div>
         <input type="hidden" name="sourceCuttingId" value="">
         <div class="form-grid compact">
-          <label>Work type
+          <label>Work type<span class="req">*</span>
             <select required name="workType">
               <option value="Stitching">Stitching</option>
               <option value="Kaaj/Button">Kaaj/Button</option>
               <option value="Handwork">Handwork</option>
             </select>
           </label>
-          <label>Vendor name <input required name="vendorName" autocomplete="off" placeholder="Vendor name"></label>
-          <label>Common name <input required name="commonName" autocomplete="off" placeholder="London Pink"></label>
-          <label>SKU code <input required name="sku" autocomplete="off" placeholder="19DoFoLoSoI"></label>
-          <label>Rate <input required name="rate" type="number" min="0" step="0.01" placeholder="25"></label>
+          <label>Vendor name<span class="req">*</span> <input required name="vendorName" autocomplete="off" placeholder="Vendor name"></label>
+          <label>Common name<span class="req">*</span> <input required name="commonName" autocomplete="off" placeholder="London Pink"></label>
+          <label>SKU code<span class="req">*</span> <input required name="sku" autocomplete="off" placeholder="19DoFoLoSoI"></label>
+          <label>Rate<span class="req">*</span> <input required name="rate" type="number" min="0" step="0.01" placeholder="25"></label>
           <label>Total amount <input required readonly name="totalAmount" type="number" min="0" step="0.01" placeholder="0"></label>
-          <label>Delivery date <input required name="deliveryDate" type="date"></label>
+          <label>Delivery date<span class="req">*</span> <input required name="deliveryDate" type="date"></label>
         </div>
         <fieldset class="size-grid">
-          <legend>Size-wise quantity</legend>
+          <legend>Size-wise quantity<span class="req">*</span></legend>
           <label>1-2 Yr <input name="size_1_2" type="number" min="0" step="1" value="0"></label>
           <label>2-3 Yr <input name="size_2_3" type="number" min="0" step="1" value="0"></label>
           <label>3-4 Yr <input name="size_3_4" type="number" min="0" step="1" value="0"></label>
@@ -442,7 +442,7 @@
         </div>
       </div>
       <form class="form-grid compact" id="accessoryStockForm">
-        <label>Accessory type
+        <label>Accessory type<span class="req">*</span>
           <select required name="accessoryType" id="accessoryStockType">
             <option value="elastic">Elastic</option>
             <option value="button">Button</option>
@@ -450,10 +450,10 @@
             <option value="other">Other</option>
           </select>
         </label>
-        <label>Name (for "Other") <input name="label" autocomplete="off" placeholder="Lace, dori, etc."></label>
+        <label>Name (for "Other")<span class="req">*</span> <input name="label" autocomplete="off" placeholder="Lace, dori, etc."></label>
         <label>Linked SKU (optional) <input name="sku" autocomplete="off" placeholder="Leave blank for general stock"></label>
-        <label>Quantity received <input required name="qty" type="number" min="0" step="1" placeholder="500"></label>
-        <label>Date received <input required name="date" type="date"></label>
+        <label>Quantity received<span class="req">*</span> <input required name="qty" type="number" min="0" step="1" placeholder="500"></label>
+        <label>Date received<span class="req">*</span> <input required name="date" type="date"></label>
         <button class="primary-action" type="submit">
           <i data-lucide="plus" aria-hidden="true"></i>
           Add stock
@@ -528,6 +528,7 @@
     <form id="moveQtyForm" method="dialog">
       <h2 id="moveQtyDialogTitle">Send pieces forward</h2>
       <p id="moveQtySubtitle" class="split-dialog-subtitle"></p>
+      <p class="split-dialog-subtitle">Quantity<span class="req">*</span> &mdash; at least one size must be greater than 0</p>
       <div id="moveQtySizeGrid" class="split-dialog-grid"></div>
       <p id="moveQtyTotal" class="split-dialog-total"></p>
       <div class="row-actions split-dialog-actions">
@@ -540,19 +541,19 @@
   <dialog id="receiveDialog" class="split-dialog">
     <form id="receiveForm" method="dialog">
       <h2>Log incoming receipt</h2>
-      <label>Outsourcing entry
+      <label>Outsourcing entry<span class="req">*</span>
         <select required id="receiveEntrySelect"></select>
       </label>
       <p id="receiveSubtitle" class="split-dialog-subtitle"></p>
       <div class="split-dialog-grid">
-        <label>Received quantity
+        <label>Received quantity<span class="req">*</span>
           <input required id="receiveQty" type="number" min="0" step="1" value="0">
           <small id="receiveQtyMax"></small>
         </label>
-        <label>Date received
+        <label>Date received<span class="req">*</span>
           <input required id="receiveDate" type="date">
         </label>
-        <label>Amount paid
+        <label>Amount paid<span class="req">*</span>
           <input required id="receiveAmountPaid" type="number" min="0" step="0.01" value="0">
           <small id="receiveAmountLeftHint"></small>
         </label>
