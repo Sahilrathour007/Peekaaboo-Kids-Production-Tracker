@@ -208,14 +208,15 @@ async function persistRemoteState() {
       updated_at: new Date().toISOString()
     }, { onConflict: "id" });
   const fabricsOk = await persistRemoteFabrics();
+  const relationalOk = fabricsOk ? await persistRemoteRelationalData() : false;
 
-  if (stateError && !fabricsOk) {
+  if (stateError && !relationalOk) {
     console.error("Supabase save failed", stateError);
     setSyncStatus("Supabase save failed", "error");
     return;
   }
   if (stateError) console.warn("Supabase state snapshot save failed", stateError);
-  setSyncStatus("Synced", "ok");
+  setSyncStatus(relationalOk ? "Synced" : "Supabase partial sync", relationalOk ? "ok" : "error");
 }
 
 function mapFabricToSupabaseRow(fabric) {
@@ -257,7 +258,11 @@ async function persistRemoteFabrics() {
     }
   }
 
-  const codes = rows.map((row) => row.code);
+  return true;
+}
+
+async function cleanupRemoteFabrics() {
+  const codes = state.fabrics.map((fabric) => fabric.code);
   const { data: existing, error: readError } = await supabaseClient
     .from("fabrics")
     .select("code");
@@ -277,6 +282,196 @@ async function persistRemoteFabrics() {
     if (deleteError) console.warn("Supabase fabrics cleanup failed", deleteError);
   }
   return true;
+}
+
+async function clearRemoteTable(table, idColumn = "id") {
+  const { error } = await supabaseClient
+    .from(table)
+    .delete()
+    .not(idColumn, "is", null);
+  if (error) {
+    console.error(`Supabase ${table} cleanup failed`, error);
+    return false;
+  }
+  return true;
+}
+
+async function insertRemoteRows(table, rows) {
+  if (!rows.length) return true;
+  const { error } = await supabaseClient
+    .from(table)
+    .insert(rows);
+  if (error) {
+    console.error(`Supabase ${table} insert failed`, error);
+    return false;
+  }
+  return true;
+}
+
+function cuttingStageSequence(cutting) {
+  const history = (cutting.stageHistory || []).filter(Boolean);
+  const currentStage = cutting.stage || "Cutting complete";
+  const sequence = [...history, currentStage];
+  return sequence.length ? sequence : ["Cutting complete"];
+}
+
+function mapCuttingToSupabaseRow(cutting) {
+  return {
+    id: cutting.id,
+    batch_code: cutting.batchCode,
+    root_code: cutting.rootCode || cutting.batchCode,
+    cut_group_id: cutting.cutGroupId || null,
+    parent_cutting_id: null,
+    sku: cutting.sku,
+    common_name: cutting.commonName,
+    garment_type: cutting.garmentType || "custom",
+    garment_label: cutting.garmentLabel || null,
+    gender: cutting.gender || null,
+    entry_date: cutting.entryDate || todayDate(),
+    current_stage: cutting.stage || "Cutting complete",
+    finished_goods_date: cutting.finishedGoodsDate || null,
+    created_at: cutting.createdAt || new Date().toISOString()
+  };
+}
+
+function mapCuttingFabricComponents(cutting) {
+  return (cutting.fabricComponents || [])
+    .map((component) => ({
+      cutting_id: cutting.id,
+      fabric_code: component.fabricCode,
+      avg_fabric_used: toNumber(component.avgFabricUsed),
+      qty_used: toNumber(component.used),
+      correction: toNumber(component.correction)
+    }))
+    .filter((row) => row.cutting_id && row.fabric_code);
+}
+
+function mapCuttingStageMovements(cutting) {
+  const rows = [];
+  const sequence = cuttingStageSequence(cutting);
+  const movedAt = cutting.createdAt || new Date().toISOString();
+  SIZES.forEach(([sizeCode]) => {
+    const qty = toNumber(cutting.sizes?.[sizeCode]);
+    if (qty <= 0) return;
+    rows.push({
+      cutting_id: cutting.id,
+      size_code: sizeCode,
+      stage: sequence[0],
+      direction: "in",
+      qty,
+      movement_type: "cut_in",
+      moved_at: movedAt
+    });
+    for (let index = 1; index < sequence.length; index++) {
+      rows.push({
+        cutting_id: cutting.id,
+        size_code: sizeCode,
+        stage: sequence[index - 1],
+        direction: "out",
+        qty,
+        movement_type: "advance",
+        moved_at: movedAt
+      });
+      rows.push({
+        cutting_id: cutting.id,
+        size_code: sizeCode,
+        stage: sequence[index],
+        direction: "in",
+        qty,
+        movement_type: "advance",
+        moved_at: movedAt
+      });
+    }
+  });
+  return rows;
+}
+
+function mapOutsourcingToSupabaseRow(entry) {
+  return {
+    id: entry.id,
+    cutting_id: entry.sourceCuttingId || null,
+    work_type: entry.workType,
+    vendor_name: entry.vendorName,
+    sku: entry.sku,
+    common_name: entry.commonName,
+    rate: toNumber(entry.rate),
+    delivery_date: entry.deliveryDate || todayDate(),
+    pending_delivery_date: entry.pendingDeliveryDate || null,
+    created_at: entry.createdAt || new Date().toISOString()
+  };
+}
+
+function mapOutsourcingSizes(entry) {
+  return SIZES.map(([sizeCode]) => ({
+    outsourcing_id: entry.id,
+    size_code: sizeCode,
+    qty: toNumber(entry.sizes?.[sizeCode])
+  }));
+}
+
+function mapOutsourcingAccessories(entry) {
+  return {
+    outsourcing_id: entry.id,
+    elastic: toNumber(entry.accessories?.elastic),
+    button: toNumber(entry.accessories?.button),
+    tag: toNumber(entry.accessories?.tag),
+    other_accessory: entry.accessories?.otherAccessory || null
+  };
+}
+
+function mapOutsourcingReceipts(entry) {
+  return (entry.receipts || [])
+    .map((receipt) => ({
+      id: receipt.id,
+      outsourcing_id: entry.id,
+      qty: toNumber(receipt.qty),
+      received_date: receipt.date || todayDate(),
+      amount_paid: toNumber(receipt.amountPaid)
+    }))
+    .filter((row) => row.id && row.qty > 0);
+}
+
+function mapAccessoryStockToSupabaseRow(entry) {
+  return {
+    id: entry.id,
+    accessory_type: entry.accessoryType,
+    label: entry.label || null,
+    sku: entry.sku || null,
+    common_name: entry.commonName || null,
+    qty: toNumber(entry.qty),
+    entry_date: entry.date || todayDate()
+  };
+}
+
+async function persistRemoteRelationalData() {
+  const cleanupOrder = [
+    ["outsourcing_receipts", "id"],
+    ["outsourcing_accessories", "outsourcing_id"],
+    ["outsourcing_sizes", "outsourcing_id"],
+    ["cutting_stage_movements", "id"],
+    ["cutting_fabric_components", "id"],
+    ["outsourcing", "id"],
+    ["cuttings", "id"],
+    ["accessory_stock", "id"]
+  ];
+  for (const [table, idColumn] of cleanupOrder) {
+    if (!await clearRemoteTable(table, idColumn)) return false;
+  }
+
+  const inserts = [
+    ["cuttings", state.cuttings.map(mapCuttingToSupabaseRow)],
+    ["cutting_fabric_components", state.cuttings.flatMap(mapCuttingFabricComponents)],
+    ["cutting_stage_movements", state.cuttings.flatMap(mapCuttingStageMovements)],
+    ["outsourcing", state.outsourcing.map(mapOutsourcingToSupabaseRow)],
+    ["outsourcing_sizes", state.outsourcing.flatMap(mapOutsourcingSizes)],
+    ["outsourcing_accessories", state.outsourcing.map(mapOutsourcingAccessories)],
+    ["outsourcing_receipts", state.outsourcing.flatMap(mapOutsourcingReceipts)],
+    ["accessory_stock", state.accessoryStock.map(mapAccessoryStockToSupabaseRow)]
+  ];
+  for (const [table, rows] of inserts) {
+    if (!await insertRemoteRows(table, rows)) return false;
+  }
+  return cleanupRemoteFabrics();
 }
 
 async function loadRemoteFabrics() {
@@ -323,7 +518,9 @@ async function loadRemoteState() {
     state = normalizeState(data.data);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     suppressRemoteSave = false;
-    setSyncStatus("Synced", "ok");
+    const fabricsOk = await persistRemoteFabrics();
+    const relationalOk = fabricsOk ? await persistRemoteRelationalData() : false;
+    setSyncStatus(relationalOk ? "Synced" : "Supabase partial sync", relationalOk ? "ok" : "error");
     return;
   }
 
