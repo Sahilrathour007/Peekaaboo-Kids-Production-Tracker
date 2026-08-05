@@ -4,6 +4,9 @@ create table if not exists public.production_tracker_state (
   updated_at timestamp with time zone not null default now()
 );
 
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on table public.production_tracker_state to anon, authenticated;
+
 alter table public.production_tracker_state enable row level security;
 
 drop policy if exists "production tracker public read" on public.production_tracker_state;
@@ -26,6 +29,7 @@ create policy "production tracker public update"
   with check (true);
 
 alter table public.fabrics enable row level security;
+grant select, insert, update, delete on table public.fabrics to anon, authenticated;
 
 drop policy if exists "production tracker fabrics read" on public.fabrics;
 create policy "production tracker fabrics read"
@@ -60,6 +64,15 @@ alter table public.outsourcing_sizes enable row level security;
 alter table public.outsourcing_accessories enable row level security;
 alter table public.outsourcing_receipts enable row level security;
 alter table public.accessory_stock enable row level security;
+
+grant select, insert, update, delete on table public.cuttings to anon, authenticated;
+grant select, insert, update, delete on table public.cutting_fabric_components to anon, authenticated;
+grant select, insert, update, delete on table public.cutting_stage_movements to anon, authenticated;
+grant select, insert, update, delete on table public.outsourcing to anon, authenticated;
+grant select, insert, update, delete on table public.outsourcing_sizes to anon, authenticated;
+grant select, insert, update, delete on table public.outsourcing_accessories to anon, authenticated;
+grant select, insert, update, delete on table public.outsourcing_receipts to anon, authenticated;
+grant select, insert, update, delete on table public.accessory_stock to anon, authenticated;
 
 drop policy if exists "production tracker cuttings read" on public.cuttings;
 create policy "production tracker cuttings read" on public.cuttings for select using (true);
