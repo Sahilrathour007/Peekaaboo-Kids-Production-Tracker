@@ -24,3 +24,30 @@ create policy "production tracker public update"
   for update
   using (true)
   with check (true);
+
+alter table public.fabrics enable row level security;
+
+drop policy if exists "production tracker fabrics read" on public.fabrics;
+create policy "production tracker fabrics read"
+  on public.fabrics
+  for select
+  using (true);
+
+drop policy if exists "production tracker fabrics insert" on public.fabrics;
+create policy "production tracker fabrics insert"
+  on public.fabrics
+  for insert
+  with check (true);
+
+drop policy if exists "production tracker fabrics update" on public.fabrics;
+create policy "production tracker fabrics update"
+  on public.fabrics
+  for update
+  using (true)
+  with check (true);
+
+drop policy if exists "production tracker fabrics delete" on public.fabrics;
+create policy "production tracker fabrics delete"
+  on public.fabrics
+  for delete
+  using (true);

@@ -1,7 +1,10 @@
 const STORAGE_KEY = "peekaaboo-production-tracker-v2";
 const SUPABASE_STATE_TABLE = "production_tracker_state";
 const SUPABASE_STATE_ID = "main";
-const SUPABASE_CONFIG = window.PEEKAABOO_SUPABASE || {};
+const SUPABASE_CONFIG = window.PEEKAABOO_SUPABASE || {
+  url: "https://drctfjrjdtpprxeycfll.supabase.co",
+  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyY3RmanJqZHRwcHJ4ZXljZmxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NDI2MTksImV4cCI6MjEwMDExODYxOX0.7uC6HirVLActwhshJI5kp57Ju12vUdVrSlM1rgShzSY"
+};
 const supabaseClient = window.supabase && SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey
   ? window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey)
   : null;
@@ -197,20 +200,99 @@ function queueRemoteSave() {
 async function persistRemoteState() {
   if (!supabaseClient) return;
   setSyncStatus("Syncing...", "pending");
-  const { error } = await supabaseClient
+  const { error: stateError } = await supabaseClient
     .from(SUPABASE_STATE_TABLE)
     .upsert({
       id: SUPABASE_STATE_ID,
       data: state,
       updated_at: new Date().toISOString()
     }, { onConflict: "id" });
+  const fabricsOk = await persistRemoteFabrics();
 
-  if (error) {
-    console.error("Supabase save failed", error);
+  if (stateError && !fabricsOk) {
+    console.error("Supabase save failed", stateError);
     setSyncStatus("Supabase save failed", "error");
     return;
   }
+  if (stateError) console.warn("Supabase state snapshot save failed", stateError);
   setSyncStatus("Synced", "ok");
+}
+
+function mapFabricToSupabaseRow(fabric) {
+  return {
+    code: fabric.code,
+    fabric_name: fabric.name,
+    print_type: fabric.printType,
+    colour: fabric.colour,
+    qty_per_roll: toNumber(fabric.qty),
+    rolls: toNumber(fabric.rolls),
+    consumed: toNumber(fabric.consumed)
+  };
+}
+
+function mapSupabaseRowToFabric(row) {
+  return {
+    id: row.code,
+    code: row.code,
+    name: row.fabric_name,
+    printType: row.print_type,
+    colour: row.colour,
+    qty: toNumber(row.qty_per_roll),
+    rolls: toNumber(row.rolls),
+    totalLength: toNumber(row.qty_per_roll) * toNumber(row.rolls),
+    consumed: toNumber(row.consumed)
+  };
+}
+
+async function persistRemoteFabrics() {
+  if (!supabaseClient) return false;
+  const rows = state.fabrics.map(mapFabricToSupabaseRow);
+  if (rows.length) {
+    const { error } = await supabaseClient
+      .from("fabrics")
+      .upsert(rows, { onConflict: "code" });
+    if (error) {
+      console.error("Supabase fabrics save failed", error);
+      return false;
+    }
+  }
+
+  const codes = rows.map((row) => row.code);
+  const { data: existing, error: readError } = await supabaseClient
+    .from("fabrics")
+    .select("code");
+  if (readError) {
+    console.warn("Supabase fabrics cleanup skipped", readError);
+    return true;
+  }
+
+  const staleCodes = (existing || [])
+    .map((row) => row.code)
+    .filter((code) => !codes.includes(code));
+  if (staleCodes.length) {
+    const { error: deleteError } = await supabaseClient
+      .from("fabrics")
+      .delete()
+      .in("code", staleCodes);
+    if (deleteError) console.warn("Supabase fabrics cleanup failed", deleteError);
+  }
+  return true;
+}
+
+async function loadRemoteFabrics() {
+  if (!supabaseClient) return false;
+  const { data, error } = await supabaseClient
+    .from("fabrics")
+    .select("code,fabric_name,print_type,colour,qty_per_roll,rolls,consumed")
+    .order("created_at", { ascending: true });
+  if (error) {
+    console.error("Supabase fabrics load failed", error);
+    return false;
+  }
+  if (!data?.length) return false;
+  state.fabrics = data.map(mapSupabaseRowToFabric);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  return true;
 }
 
 async function loadRemoteState() {
@@ -231,7 +313,8 @@ async function loadRemoteState() {
 
   if (error) {
     console.error("Supabase load failed", error);
-    setSyncStatus("Supabase unavailable", "error");
+    const fabricsLoaded = await loadRemoteFabrics();
+    setSyncStatus(fabricsLoaded ? "Synced" : "Supabase unavailable", fabricsLoaded ? "ok" : "error");
     return;
   }
 

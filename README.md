@@ -6,12 +6,10 @@ A browser-based production tracker for fabric inventory, cutting batches, stage 
 
 1. Open your Supabase project SQL editor.
 2. Run `supabase-setup.sql` once.
-3. Copy `supabase-config.example.js` to `supabase-config.js`.
-4. Add your Supabase URL and anon key to `supabase-config.js`.
-5. Open `index (1).html` in a browser.
+3. Open `index.html` in a browser or use the GitHub Pages URL.
 
-The app stores a full tracker snapshot in the `production_tracker_state` table and also keeps a browser `localStorage` backup.
+The app stores a full tracker snapshot in the `production_tracker_state` table, mirrors fabric inventory into `public.fabrics`, and also keeps a browser `localStorage` backup.
 
 ## GitHub Safety
 
-`supabase-config.js` is intentionally ignored by Git, so your local Supabase config is not uploaded.
+`supabase-config.js` is intentionally ignored by Git for local overrides. The Supabase anon key used by the browser app is public by design; never commit a Supabase `service_role` key.
