@@ -6,8 +6,88 @@
   <title>Peekaaboo Production Tracker</title>
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .login-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f4f5f7;
+      font-family: inherit;
+    }
+    .login-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      padding: 32px;
+      width: 100%;
+      max-width: 360px;
+    }
+    .login-card h1 {
+      font-size: 1.25rem;
+      margin: 0 0 4px;
+    }
+    .login-card p {
+      color: #667085;
+      font-size: 0.9rem;
+      margin: 0 0 20px;
+    }
+    .login-card label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin: 12px 0 4px;
+    }
+    .login-card input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d0d5dd;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      box-sizing: border-box;
+    }
+    .login-card button {
+      width: 100%;
+      margin-top: 20px;
+      padding: 11px;
+      border: none;
+      border-radius: 8px;
+      background: #0f766e;
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    .login-card button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .login-error {
+      color: #b42318;
+      font-size: 0.85rem;
+      margin-top: 12px;
+      min-height: 1em;
+    }
+    #appRoot[hidden], #loginScreen[hidden] { display: none; }
+  </style>
 </head>
 <body>
+  <div id="loginScreen" class="login-screen" hidden>
+    <div class="login-card">
+      <h1>Peekaaboo Production Tracker</h1>
+      <p>Sign in to continue</p>
+      <form id="loginForm">
+        <label for="loginEmail">Email</label>
+        <input id="loginEmail" type="email" autocomplete="username" required>
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" type="password" autocomplete="current-password" required>
+        <button id="loginSubmit" type="submit">Sign in</button>
+        <div class="login-error" id="loginError"></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="appRoot" hidden>
   <header class="app-header">
     <div>
       <p class="eyebrow">Peekaaboo Kids</p>
@@ -24,6 +104,9 @@
       </label>
       <button class="icon-button danger" id="resetBtn" type="button" aria-label="Clear all data" data-tooltip="Clear all data">
         <i data-lucide="trash-2" aria-hidden="true"></i>
+      </button>
+      <button class="icon-button" id="signOutBtn" type="button" aria-label="Sign out" data-tooltip="Sign out">
+        <i data-lucide="log-out" aria-hidden="true"></i>
       </button>
     </div>
   </header>
@@ -572,6 +655,11 @@
 
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </div><!-- /#appRoot -->
+
+  <!-- config.js is NOT committed to git — see config.example.js for the template.
+       It must set window.PEEKAABOO_SUPABASE = { url, anonKey } before app.js loads. -->
+  <script src="config.js"></script>
   <script src="sku-database.js"></script>
   <script src="accessory-rules.js"></script>
   <script src="app.js"></script>

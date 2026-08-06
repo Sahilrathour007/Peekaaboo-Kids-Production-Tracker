@@ -1,10 +1,13 @@
 const STORAGE_KEY = "peekaaboo-production-tracker-v2";
 const SUPABASE_STATE_TABLE = "production_tracker_state";
 const SUPABASE_STATE_ID = "main";
-const SUPABASE_CONFIG = window.PEEKAABOO_SUPABASE || {
-  url: "https://drctfjrjdtpprxeycfll.supabase.co",
-  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyY3RmanJqZHRwcHJ4ZXljZmxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NDI2MTksImV4cCI6MjEwMDExODYxOX0.7uC6HirVLActwhshJI5kp57Ju12vUdVrSlM1rgShzSY"
-};
+// Populated by config.js (gitignored — never commit real keys). See config.example.js.
+const SUPABASE_CONFIG = window.PEEKAABOO_SUPABASE || {};
+if (!SUPABASE_CONFIG.url || !SUPABASE_CONFIG.anonKey) {
+  console.error(
+    "Missing config.js — copy config.example.js to config.js and fill in your Supabase URL + anon/publishable key."
+  );
+}
 const supabaseClient = window.supabase && SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey
   ? window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey)
   : null;
@@ -2727,4 +2730,76 @@ async function initApp() {
   if ($("#accessoryStockForm").date) $("#accessoryStockForm").date.value = todayDate();
 }
 
-initApp();
+// --- Auth gating -----------------------------------------------------
+// replace_relational_data (and RLS on fabrics/production_tracker_state) now
+// require an authenticated session. The app must not attempt to load or
+// render data until Supabase confirms a signed-in user.
+
+let appBooted = false;
+
+function showLoginScreen(message) {
+  $("#appRoot").hidden = true;
+  $("#loginScreen").hidden = false;
+  $("#loginError").textContent = message || "";
+}
+
+async function showAppAfterLogin() {
+  $("#loginScreen").hidden = true;
+  $("#appRoot").hidden = false;
+  if (!appBooted) {
+    appBooted = true;
+    await initApp();
+  }
+}
+
+async function handleLoginSubmit(event) {
+  event.preventDefault();
+  const submitBtn = $("#loginSubmit");
+  const email = $("#loginEmail").value.trim();
+  const password = $("#loginPassword").value;
+  submitBtn.disabled = true;
+  $("#loginError").textContent = "";
+
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+  submitBtn.disabled = false;
+  if (error) {
+    $("#loginError").textContent = error.message || "Sign in failed.";
+  }
+  // onAuthStateChange handles the transition to the app on success.
+}
+
+async function handleSignOut() {
+  await supabaseClient.auth.signOut();
+  appBooted = false;
+  state = structuredClone(defaultState);
+  showLoginScreen("");
+}
+
+async function bootWithAuth() {
+  if (!supabaseClient) {
+    console.error("Supabase client not configured — check config.js.");
+    showLoginScreen("App is not configured. Contact the administrator.");
+    return;
+  }
+
+  $("#loginForm").addEventListener("submit", handleLoginSubmit);
+  $("#signOutBtn").addEventListener("click", handleSignOut);
+
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    if (session) {
+      showAppAfterLogin();
+    } else {
+      showLoginScreen("");
+    }
+  });
+
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session) {
+    await showAppAfterLogin();
+  } else {
+    showLoginScreen("");
+  }
+}
+
+bootWithAuth();
