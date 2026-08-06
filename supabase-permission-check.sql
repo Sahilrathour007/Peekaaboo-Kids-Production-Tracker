@@ -41,3 +41,17 @@ where table_schema = 'public'
     'accessory_stock'
   )
 order by table_name, grantee, privilege_type;
+
+select
+  n.nspname as schema_name,
+  p.proname as function_name,
+  pg_get_function_identity_arguments(p.oid) as arguments,
+  p.prosecdef as security_definer,
+  r.rolname as grantee,
+  has_function_privilege(r.rolname, p.oid, 'execute') as can_execute
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+cross join (values ('anon'), ('authenticated')) as r(rolname)
+where n.nspname = 'public'
+  and p.proname = 'replace_relational_data'
+order by r.rolname;

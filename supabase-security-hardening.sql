@@ -1,15 +1,37 @@
-create table if not exists public.production_tracker_state (
-  id text primary key,
-  data jsonb not null default '{}'::jsonb,
-  updated_at timestamp with time zone not null default now()
-);
+-- Run this once in Supabase SQL Editor against the live project.
+-- It removes anonymous write/RPC access and makes the atomic replace RPC obey
+-- the caller's grants and RLS policies instead of bypassing them as postgres.
+
+begin;
 
 grant usage on schema public to authenticated;
 revoke usage on schema public from anon;
-grant select, insert, update, delete on table public.production_tracker_state to authenticated;
-revoke all on table public.production_tracker_state from anon;
 
-alter table public.production_tracker_state enable row level security;
+revoke all on table public.production_tracker_state from anon;
+revoke all on table public.fabrics from anon;
+revoke all on table public.cuttings from anon;
+revoke all on table public.cutting_fabric_components from anon;
+revoke all on table public.cutting_stage_movements from anon;
+revoke all on table public.outsourcing from anon;
+revoke all on table public.outsourcing_sizes from anon;
+revoke all on table public.outsourcing_accessories from anon;
+revoke all on table public.outsourcing_receipts from anon;
+revoke all on table public.accessory_stock from anon;
+
+grant select, insert, update, delete on table public.production_tracker_state to authenticated;
+grant select, insert, update, delete on table public.fabrics to authenticated;
+grant select, insert, update, delete on table public.cuttings to authenticated;
+grant select, insert, update, delete on table public.cutting_fabric_components to authenticated;
+grant select, insert, update, delete on table public.cutting_stage_movements to authenticated;
+grant select, insert, update, delete on table public.outsourcing to authenticated;
+grant select, insert, update, delete on table public.outsourcing_sizes to authenticated;
+grant select, insert, update, delete on table public.outsourcing_accessories to authenticated;
+grant select, insert, update, delete on table public.outsourcing_receipts to authenticated;
+grant select, insert, update, delete on table public.accessory_stock to authenticated;
+
+alter function if exists public.replace_relational_data(jsonb) security invoker;
+revoke execute on function public.replace_relational_data(jsonb) from anon;
+grant execute on function public.replace_relational_data(jsonb) to authenticated;
 
 drop policy if exists "production tracker public read" on public.production_tracker_state;
 create policy "production tracker public read"
@@ -33,64 +55,14 @@ create policy "production tracker public update"
   using (auth.uid() is not null)
   with check (auth.uid() is not null);
 
-alter table public.fabrics enable row level security;
-grant select, insert, update, delete on table public.fabrics to authenticated;
-revoke all on table public.fabrics from anon;
-
 drop policy if exists "production tracker fabrics read" on public.fabrics;
-create policy "production tracker fabrics read"
-  on public.fabrics
-  for select
-  to authenticated
-  using (auth.uid() is not null);
-
+create policy "production tracker fabrics read" on public.fabrics for select to authenticated using (auth.uid() is not null);
 drop policy if exists "production tracker fabrics insert" on public.fabrics;
-create policy "production tracker fabrics insert"
-  on public.fabrics
-  for insert
-  to authenticated
-  with check (auth.uid() is not null);
-
+create policy "production tracker fabrics insert" on public.fabrics for insert to authenticated with check (auth.uid() is not null);
 drop policy if exists "production tracker fabrics update" on public.fabrics;
-create policy "production tracker fabrics update"
-  on public.fabrics
-  for update
-  to authenticated
-  using (auth.uid() is not null)
-  with check (auth.uid() is not null);
-
+create policy "production tracker fabrics update" on public.fabrics for update to authenticated using (auth.uid() is not null) with check (auth.uid() is not null);
 drop policy if exists "production tracker fabrics delete" on public.fabrics;
-create policy "production tracker fabrics delete"
-  on public.fabrics
-  for delete
-  to authenticated
-  using (auth.uid() is not null);
-
-alter table public.cuttings enable row level security;
-alter table public.cutting_fabric_components enable row level security;
-alter table public.cutting_stage_movements enable row level security;
-alter table public.outsourcing enable row level security;
-alter table public.outsourcing_sizes enable row level security;
-alter table public.outsourcing_accessories enable row level security;
-alter table public.outsourcing_receipts enable row level security;
-alter table public.accessory_stock enable row level security;
-
-grant select, insert, update, delete on table public.cuttings to authenticated;
-grant select, insert, update, delete on table public.cutting_fabric_components to authenticated;
-grant select, insert, update, delete on table public.cutting_stage_movements to authenticated;
-grant select, insert, update, delete on table public.outsourcing to authenticated;
-grant select, insert, update, delete on table public.outsourcing_sizes to authenticated;
-grant select, insert, update, delete on table public.outsourcing_accessories to authenticated;
-grant select, insert, update, delete on table public.outsourcing_receipts to authenticated;
-grant select, insert, update, delete on table public.accessory_stock to authenticated;
-revoke all on table public.cuttings from anon;
-revoke all on table public.cutting_fabric_components from anon;
-revoke all on table public.cutting_stage_movements from anon;
-revoke all on table public.outsourcing from anon;
-revoke all on table public.outsourcing_sizes from anon;
-revoke all on table public.outsourcing_accessories from anon;
-revoke all on table public.outsourcing_receipts from anon;
-revoke all on table public.accessory_stock from anon;
+create policy "production tracker fabrics delete" on public.fabrics for delete to authenticated using (auth.uid() is not null);
 
 drop policy if exists "production tracker cuttings read" on public.cuttings;
 create policy "production tracker cuttings read" on public.cuttings for select to authenticated using (auth.uid() is not null);
@@ -164,6 +136,4 @@ create policy "production tracker accessory stock update" on public.accessory_st
 drop policy if exists "production tracker accessory stock delete" on public.accessory_stock;
 create policy "production tracker accessory stock delete" on public.accessory_stock for delete to authenticated using (auth.uid() is not null);
 
-alter function if exists public.replace_relational_data(jsonb) security invoker;
-revoke execute on function public.replace_relational_data(jsonb) from anon;
-grant execute on function public.replace_relational_data(jsonb) to authenticated;
+commit;

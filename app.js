@@ -1,11 +1,12 @@
 const STORAGE_KEY = "peekaaboo-production-tracker-v2";
 const SUPABASE_STATE_TABLE = "production_tracker_state";
 const SUPABASE_STATE_ID = "main";
-// Populated by config.js (gitignored — never commit real keys). See config.example.js.
+// Populated by supabase-config.js (gitignored; never commit real keys).
+// See supabase-config.example.js.
 const SUPABASE_CONFIG = window.PEEKAABOO_SUPABASE || {};
 if (!SUPABASE_CONFIG.url || !SUPABASE_CONFIG.anonKey) {
   console.error(
-    "Missing config.js — copy config.example.js to config.js and fill in your Supabase URL + anon/publishable key."
+    "Missing supabase-config.js - copy supabase-config.example.js to supabase-config.js and fill in your Supabase URL + anon/publishable key."
   );
 }
 const supabaseClient = window.supabase && SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey
@@ -2778,7 +2779,7 @@ async function handleSignOut() {
 
 async function bootWithAuth() {
   if (!supabaseClient) {
-    console.error("Supabase client not configured — check config.js.");
+    console.error("Supabase client not configured - check supabase-config.js.");
     showLoginScreen("App is not configured. Contact the administrator.");
     return;
   }
@@ -2788,7 +2789,9 @@ async function bootWithAuth() {
 
   supabaseClient.auth.onAuthStateChange((_event, session) => {
     if (session) {
-      showAppAfterLogin();
+      setTimeout(() => {
+        showAppAfterLogin();
+      }, 0);
     } else {
       showLoginScreen("");
     }
