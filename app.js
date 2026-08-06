@@ -380,7 +380,10 @@ function mapCuttingFabricComponents(cutting) {
       qty_used: toNumber(component.used),
       correction: toNumber(component.correction)
     }))
-    .filter((row) => row.cutting_id && row.fabric_code);
+    // DB requires avg_fabric_used > 0 (CHECK cutting_fabric_components_avg_used_positive).
+    // A row with 0/blank avg usage is incomplete data, not valid data — drop it here
+    // AND flag it via validateStateBeforeSave() so the user sees why it's missing.
+    .filter((row) => row.cutting_id && row.fabric_code && row.avg_fabric_used > 0);
 }
 
 function mapCuttingStageMovements(cutting) {
@@ -480,34 +483,79 @@ function mapAccessoryStockToSupabaseRow(entry) {
   };
 }
 
+// accessory_stock has CHECK (qty > 0) too — same silent-zero failure mode
+// as cutting_fabric_components. Filter it out here as a safety net; the
+// real catch should happen in validateStateBeforeSave() before this runs.
+function isValidAccessoryStockRow(row) {
+  return row.id && row.accessory_type && row.qty > 0;
+}
+
+// Client-side pre-flight check. Run this BEFORE persistRemoteState/RPC.
+// Returns a list of human-readable problems instead of silently dropping
+// rows and letting Postgres discover it after your data is mid-wipe.
+function validateStateBeforeSave() {
+  const issues = [];
+
+  state.cuttings.forEach((cutting) => {
+    (cutting.fabricComponents || []).forEach((component) => {
+      const avgUsed = toNumber(component.avgFabricUsed);
+      if (component.fabricCode && avgUsed <= 0) {
+        issues.push(
+          `Cutting "${cutting.sku || cutting.id}": fabric component "${component.fabricCode}" ` +
+          `has no average fabric used entered (must be > 0). This row will NOT be saved until fixed.`
+        );
+      }
+    });
+  });
+
+  state.accessoryStock.forEach((entry) => {
+    if (toNumber(entry.qty) <= 0) {
+      issues.push(
+        `Accessory stock entry "${entry.label || entry.sku || entry.id}": qty must be > 0. ` +
+        `This row will NOT be saved until fixed.`
+      );
+    }
+  });
+
+  return issues;
+}
+
 async function persistRemoteRelationalData() {
-  const cleanupOrder = [
-    ["outsourcing_receipts", "id"],
-    ["outsourcing_accessories", "outsourcing_id"],
-    ["outsourcing_sizes", "outsourcing_id"],
-    ["cutting_stage_movements", "id"],
-    ["cutting_fabric_components", "id"],
-    ["outsourcing", "id"],
-    ["cuttings", "id"],
-    ["accessory_stock", "id"]
-  ];
-  for (const [table, idColumn] of cleanupOrder) {
-    if (!await clearRemoteTable(table, idColumn)) return false;
+  // Pre-flight validation: catch known constraint violations BEFORE
+  // touching the network, so bad data never triggers a wipe attempt.
+  const issues = validateStateBeforeSave();
+  if (issues.length) {
+    console.warn("Supabase save blocked by validation:", issues);
+    setSyncStatus(`Save blocked: ${issues.length} issue(s) — see console`, "error");
+    return false;
   }
 
-  const inserts = [
-    ["cuttings", state.cuttings.map(mapCuttingToSupabaseRow)],
-    ["cutting_fabric_components", state.cuttings.flatMap(mapCuttingFabricComponents)],
-    ["cutting_stage_movements", state.cuttings.flatMap(mapCuttingStageMovements)],
-    ["outsourcing", state.outsourcing.map(mapOutsourcingToSupabaseRow)],
-    ["outsourcing_sizes", state.outsourcing.flatMap(mapOutsourcingSizes)],
-    ["outsourcing_accessories", state.outsourcing.map(mapOutsourcingAccessories)],
-    ["outsourcing_receipts", state.outsourcing.flatMap(mapOutsourcingReceipts)],
-    ["accessory_stock", state.accessoryStock.map(mapAccessoryStockToSupabaseRow)]
-  ];
-  for (const [table, rows] of inserts) {
-    if (!await insertRemoteRows(table, rows)) return false;
+  const payload = {
+    cuttings: state.cuttings.map(mapCuttingToSupabaseRow),
+    cutting_fabric_components: state.cuttings.flatMap(mapCuttingFabricComponents),
+    cutting_stage_movements: state.cuttings.flatMap(mapCuttingStageMovements),
+    outsourcing: state.outsourcing.map(mapOutsourcingToSupabaseRow),
+    outsourcing_sizes: state.outsourcing.flatMap(mapOutsourcingSizes),
+    outsourcing_accessories: state.outsourcing
+      .map(mapOutsourcingAccessories)
+      .filter((row) => row.outsourcing_id),
+    outsourcing_receipts: state.outsourcing.flatMap(mapOutsourcingReceipts),
+    accessory_stock: state.accessoryStock
+      .map(mapAccessoryStockToSupabaseRow)
+      .filter(isValidAccessoryStockRow)
+  };
+
+  // Single atomic RPC — see atomic_replace_migration.sql.
+  // Postgres wraps this whole function body in one transaction:
+  // if ANY insert fails, EVERYTHING rolls back, including the deletes.
+  // You can no longer end up with tables wiped-but-not-refilled.
+  const { error } = await supabaseClient.rpc("replace_relational_data", { payload });
+  if (error) {
+    console.error("Supabase replace_relational_data failed", error);
+    setSyncStatus("Supabase save failed (rolled back, no data lost)", "error");
+    return false;
   }
+
   return cleanupRemoteFabrics();
 }
 
