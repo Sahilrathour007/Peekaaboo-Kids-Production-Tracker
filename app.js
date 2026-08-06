@@ -521,13 +521,14 @@ function validateStateBeforeSave() {
 }
 
 async function persistRemoteRelationalData() {
-  // Pre-flight validation: catch known constraint violations BEFORE
-  // touching the network, so bad data never triggers a wipe attempt.
+  // Report-only: log/flag known-incomplete rows, but NEVER let a stale
+  // historical entry block today's save. Bad rows are excluded by the
+  // mapCuttingFabricComponents()/isValidAccessoryStockRow() filters below;
+  // this just makes the exclusion visible instead of silent.
   const issues = validateStateBeforeSave();
   if (issues.length) {
-    console.warn("Supabase save blocked by validation:", issues);
-    setSyncStatus(`Save blocked: ${issues.length} issue(s) — see console`, "error");
-    return false;
+    console.warn(`Supabase save proceeding, but ${issues.length} row(s) will be skipped:`, issues);
+    setSyncStatus(`Synced (${issues.length} incomplete row(s) skipped — see console)`, "warning");
   }
 
   const payload = {
