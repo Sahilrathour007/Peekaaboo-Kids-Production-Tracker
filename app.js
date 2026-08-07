@@ -2778,6 +2778,11 @@ async function handleSignOut() {
 }
 
 async function bootWithAuth() {
+  // TEMP: login disabled for local testing. Delete this block to restore
+  // the Supabase auth gate (the original logic below is untouched).
+  await showAppAfterLogin();
+  return;
+
   if (!supabaseClient) {
     console.error("Supabase client not configured - check supabase-config.js.");
     showLoginScreen("App is not configured. Contact the administrator.");
