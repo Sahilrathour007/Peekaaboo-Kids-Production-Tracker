@@ -921,8 +921,9 @@ tr:last-child td {
    them as one inline unit inside .row-actions' flex-wrap layout. */
 .back-to-stage {
   display: inline-flex;
-  align-items: center;
+  align-items: stretch;
   gap: 6px;
+  flex-wrap: nowrap;
 }
 
 .back-to-stage select {
@@ -931,4 +932,8 @@ tr:last-child td {
   border: 1px solid var(--border, #d8dbe3);
   font: inherit;
   background: #fff;
+}
+
+.back-to-stage .secondary-action {
+  white-space: nowrap;
 }

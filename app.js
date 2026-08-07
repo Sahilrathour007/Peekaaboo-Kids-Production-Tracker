@@ -1391,7 +1391,7 @@ function renderBatchCard(cutting) {
   // it for the less common corrections.
   const otherStages = STAGES.filter((stage) => stage !== cutting.stage && stage !== previousStage);
   const orderedStageOptions = previousStage ? [previousStage, ...otherStages] : otherStages;
-  const backOption = remainingPieces > 0 && orderedStageOptions.length
+  const backOption = previousStage && remainingPieces > 0 && orderedStageOptions.length
     ? `
       <div class="back-to-stage">
         <select data-back-to-select="${cutting.id}" aria-label="Choose a stage to send this batch back to">
