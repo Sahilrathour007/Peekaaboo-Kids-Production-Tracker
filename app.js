@@ -2904,82 +2904,66 @@ async function initApp() {
 }
 
 // --- Auth gating -----------------------------------------------------
-// replace_relational_data (and RLS on fabrics/production_tracker_state) now
-// require an authenticated session. The app must not attempt to load or
-// render data until Supabase confirms a signed-in user.
+// RLS on fabrics/production_tracker_state and the replace_relational_data
+// RPC require an authenticated session — that's a Supabase requirement, not
+// optional. There is no login screen anymore, so instead of asking a human
+// to sign in, the app signs itself in anonymously on load. An anonymous
+// Supabase session still satisfies "authenticated" RLS policies, which is
+// what actually made data reach the database — a missing/invalid session
+// was why the last two outsourcing entries only ever landed in
+// localStorage. This requires "Allow anonymous sign-ins" to be turned on
+// for the project in Supabase (Authentication -> Providers -> Anonymous).
+//
+// Tradeoff worth knowing: anyone who opens this public URL gets the same
+// anonymous write access this app uses — there's no per-user identity
+// anymore. Fine for a small internal tool behind an unlisted link; not
+// fine if this URL is ever shared or indexed publicly.
 
 let appBooted = false;
 
-function showLoginScreen(message) {
-  $("#appRoot").hidden = true;
-  $("#loginScreen").hidden = false;
-  $("#loginError").textContent = message || "";
-}
-
 async function showAppAfterLogin() {
-  $("#loginScreen").hidden = true;
-  $("#appRoot").hidden = false;
   if (!appBooted) {
     appBooted = true;
     await initApp();
   }
 }
 
-async function handleLoginSubmit(event) {
-  event.preventDefault();
-  const submitBtn = $("#loginSubmit");
-  const email = $("#loginEmail").value.trim();
-  const password = $("#loginPassword").value;
-  submitBtn.disabled = true;
-  $("#loginError").textContent = "";
+async function ensureSupabaseSession() {
+  if (!supabaseClient) return false;
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session) return true;
 
-  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
-  submitBtn.disabled = false;
+  const { error } = await supabaseClient.auth.signInAnonymously();
   if (error) {
-    $("#loginError").textContent = error.message || "Sign in failed.";
+    console.error(
+      "Supabase anonymous sign-in failed - check that 'Allow anonymous sign-ins' is enabled in Authentication > Providers.",
+      error
+    );
+    return false;
   }
-  // onAuthStateChange handles the transition to the app on success.
+  return true;
 }
 
-async function handleSignOut() {
-  await supabaseClient.auth.signOut();
-  appBooted = false;
-  state = structuredClone(defaultState);
-  showLoginScreen("");
+async function handleReconnect() {
+  const btn = $("#reconnectBtn");
+  if (btn) btn.disabled = true;
+  setSyncStatus("Reconnecting...", "pending");
+  const ok = await ensureSupabaseSession();
+  if (ok) {
+    remoteLoadComplete = false;
+    await loadRemoteState();
+  } else {
+    setSyncStatus("Supabase unavailable", "error");
+  }
+  if (btn) btn.disabled = false;
 }
 
 async function bootWithAuth() {
-  // TEMP: login disabled for local testing. Delete this block to restore
-  // the Supabase auth gate (the original logic below is untouched).
+  if (supabaseClient) {
+    await ensureSupabaseSession();
+    $("#reconnectBtn")?.addEventListener("click", handleReconnect);
+  }
   await showAppAfterLogin();
-  return;
-
-  if (!supabaseClient) {
-    console.error("Supabase client not configured - check supabase-config.js.");
-    showLoginScreen("App is not configured. Contact the administrator.");
-    return;
-  }
-
-  $("#loginForm").addEventListener("submit", handleLoginSubmit);
-  $("#signOutBtn").addEventListener("click", handleSignOut);
-
-  supabaseClient.auth.onAuthStateChange((_event, session) => {
-    if (session) {
-      setTimeout(() => {
-        showAppAfterLogin();
-      }, 0);
-    } else {
-      showLoginScreen("");
-    }
-  });
-
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  if (session) {
-    await showAppAfterLogin();
-  } else {
-    showLoginScreen("");
-  }
 }
 
 bootWithAuth();
