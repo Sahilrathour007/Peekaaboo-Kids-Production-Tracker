@@ -455,7 +455,7 @@ function mapOutsourcingSizes(entry) {
     outsourcing_id: entry.id,
     size_code: sizeCode,
     qty: toNumber(entry.sizes?.[sizeCode])
-  }));
+  })).filter((row) => row.qty > 0);
 }
 
 function mapOutsourcingAccessories(entry) {
