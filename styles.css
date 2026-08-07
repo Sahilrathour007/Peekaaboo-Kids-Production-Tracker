@@ -905,3 +905,14 @@ tr:last-child td {
     width: 100%;
   }
 }
+/* Briefly flashes the row for an entry that was just saved, so it's
+   obvious the save went through without hunting for it in the list —
+   see the outsourcing form submit handler in app.js. */
+.row-just-saved {
+  animation: row-just-saved-flash 2s ease-out;
+}
+
+@keyframes row-just-saved-flash {
+  0% { background-color: rgba(20, 150, 130, 0.25); }
+  100% { background-color: transparent; }
+}

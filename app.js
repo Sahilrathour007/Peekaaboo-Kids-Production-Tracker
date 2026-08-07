@@ -210,8 +210,13 @@ function normalizeState(value) {
   // log. pendingDeliveryDate is the vendor's revised promise for whatever's
   // still outstanding; it starts out equal to the original deliveryDate and
   // gets nudged forward each time a partial receipt is logged.
-  normalized.outsourcing = normalized.outsourcing.map((entry) => ({
+  normalized.outsourcing = normalized.outsourcing.map((entry, index) => ({
     ...entry,
+    // Older entries were saved before createdAt existed. Backfill with a
+    // synthetic increasing timestamp (offset by array position) so they
+    // still sort deterministically oldest-to-newest relative to each other
+    // without colliding with real ISO timestamps on newer entries.
+    createdAt: entry.createdAt || new Date(index).toISOString(),
     receipts: entry.receipts || [],
     pendingDeliveryDate: entry.pendingDeliveryDate || entry.deliveryDate
   }));
@@ -637,6 +642,19 @@ function sortCuttingsRecent(list) {
       return dateCompare !== 0 ? dateCompare : b.index - a.index;
     })
     .map((item) => item.cutting);
+}
+
+// Outsourcing entries have a real createdAt timestamp (set at save time),
+// so sorting by that directly is more reliable than entryDate — there's no
+// user-editable "date" field to conflate with save recency here.
+function sortOutsourcingRecent(list) {
+  return list
+    .map((entry, index) => ({ entry, index }))
+    .sort((a, b) => {
+      const dateCompare = (b.entry.createdAt || "").localeCompare(a.entry.createdAt || "");
+      return dateCompare !== 0 ? dateCompare : b.index - a.index;
+    })
+    .map((item) => item.entry);
 }
 
 function todayDate() {
@@ -1540,8 +1558,8 @@ const AUTO_ADVANCE_ON_FULL_OUTSOURCE = {
 
 function renderOutsourcingRows() {
   $("#outsourcingRows").innerHTML = state.outsourcing.length
-    ? state.outsourcing.slice().reverse().map((entry) => `
-      <tr>
+    ? sortOutsourcingRecent(state.outsourcing).map((entry) => `
+      <tr data-outsourcing-row="${entry.id}">
         <td><span class="stage-pill">${entry.workType}</span></td>
         <td>${entry.vendorName}</td>
         <td>${entry.sku}</td>
@@ -1739,7 +1757,7 @@ function formatReceiptHistory(entry) {
 
 function renderIncomingMaterialRows() {
   $("#incomingMaterialRows").innerHTML = state.outsourcing.length
-    ? state.outsourcing.slice().reverse().map((entry) => {
+    ? sortOutsourcingRecent(state.outsourcing).map((entry) => {
         const fullyReceived = isOutsourcingFullyReceived(entry);
         return `
       <tr>
@@ -2645,11 +2663,38 @@ function bindEvents() {
         return;
       }
     }
+    // Guard against accidental duplicates (double-click on submit, or
+    // re-entering a batch you already logged because it wasn't obvious it
+    // had saved). We can't just block "same cutting ID twice" outright —
+    // splitting one batch's remaining pieces across several vendors is a
+    // supported flow (see the outsourcing hint text) and legitimately
+    // produces multiple entries with the same sourceCuttingId. What's
+    // actually suspicious is the *same* cutting, vendor, work type, and
+    // exact size breakdown being logged again within a short window.
+    const vendorNameValue = form.vendorName.value.trim();
+    const workTypeValue = form.workType.value;
+    const duplicateWindowMs = 15 * 60 * 1000;
+    const now = Date.now();
+    const possibleDuplicate = state.outsourcing.find((entry) => {
+      if (sourceCuttingId ? entry.sourceCuttingId !== sourceCuttingId : entry.sku.trim().toLowerCase() !== form.sku.value.trim().toLowerCase()) return false;
+      if (entry.workType !== workTypeValue) return false;
+      if (entry.vendorName.trim().toLowerCase() !== vendorNameValue.toLowerCase()) return false;
+      if (SIZES.some(([name]) => toNumber(entry.sizes[name]) !== toNumber(sizes[name]))) return false;
+      const savedAt = Date.parse(entry.createdAt || "");
+      return Number.isFinite(savedAt) && now - savedAt < duplicateWindowMs;
+    });
+    if (possibleDuplicate) {
+      const proceed = confirm(
+        `This looks identical to an entry you logged for ${possibleDuplicate.commonName} (${vendorNameValue}) a few minutes ago \u2014 same work type, vendor, and quantity.\n\nSave it again anyway?`
+      );
+      if (!proceed) return;
+    }
+    const newEntryId = crypto.randomUUID();
     state.outsourcing.push({
-      id: crypto.randomUUID(),
+      id: newEntryId,
       createdAt: new Date().toISOString(),
       workType: form.workType.value,
-      vendorName: form.vendorName.value.trim(),
+      vendorName: vendorNameValue,
       sku: form.sku.value.trim(),
       commonName: form.commonName.value.trim(),
       sourceCuttingId,
@@ -2691,12 +2736,27 @@ function bindEvents() {
     const keepLinked = sourceCutting && getRemainingPieces(sourceCutting) > 0;
     form.reset();
     if (keepLinked) {
+      // Still splitting the same batch across another vendor — the operator's
+      // next move is genuinely "type the next vendor name", so keep that focus.
       prefillOutsourcingFromCutting(sourceCutting, workTypeUsed);
     } else {
+      // Otherwise this entry is done. Refocusing an empty vendor field here
+      // was the reason a saved entry felt like it vanished — nothing on
+      // screen changed to confirm it went through, so re-entering it by
+      // hand (creating the duplicate) felt like the safe move. Instead,
+      // scroll to and briefly highlight the row that was just added.
       clearOutsourcingSourceLink();
     }
     updateOutsourcingPreview();
     renderAll();
+    if (!keepLinked) {
+      const newRow = document.querySelector(`[data-outsourcing-row="${newEntryId}"]`);
+      if (newRow) {
+        newRow.scrollIntoView({ behavior: "smooth", block: "center" });
+        newRow.classList.add("row-just-saved");
+        setTimeout(() => newRow.classList.remove("row-just-saved"), 2000);
+      }
+    }
   });
 
   $("#moveQtySizeGrid").addEventListener("input", updateMoveQtyTotal);
