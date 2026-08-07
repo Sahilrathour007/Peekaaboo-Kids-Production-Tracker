@@ -2655,6 +2655,7 @@ function bindEvents() {
     }
     const sourceCuttingId = form.sourceCuttingId.value || null;
     const sourceCutting = sourceCuttingId ? state.cuttings.find((item) => item.id === sourceCuttingId) : null;
+    let sourceCuttingAdvancedStage = false;
     if (sourceCutting) {
       const remaining = sourceCutting.sizesRemaining || sourceCutting.sizes;
       const overage = SIZES.find(([name]) => toNumber(sizes[name]) > toNumber(remaining[name]));
@@ -2723,6 +2724,7 @@ function bindEvents() {
         // available again — "remaining" tracks what hasn't been committed
         // to a vendor *at this stage*, not lifetime history.
         sourceCutting.sizesRemaining = { ...sourceCutting.sizes };
+        sourceCuttingAdvancedStage = true;
       }
     }
     saveState();
@@ -2733,7 +2735,12 @@ function bindEvents() {
     // the reason a follow-up entry wouldn't reduce the batch's remaining
     // quantity at all.
     const workTypeUsed = form.workType.value;
-    const keepLinked = sourceCutting && getRemainingPieces(sourceCutting) > 0;
+    // Only keep the form linked to the same batch/vendor-splitting flow if
+    // it's still sitting at the SAME stage with genuine leftover pieces.
+    // If it just auto-advanced to a new stage, "remaining" was reset to the
+    // full batch quantity for that new stage — that's not leftover pieces
+    // to send to another vendor, it's a signal the batch is done here.
+    const keepLinked = sourceCutting && !sourceCuttingAdvancedStage && getRemainingPieces(sourceCutting) > 0;
     form.reset();
     if (keepLinked) {
       // Still splitting the same batch across another vendor — the operator's
