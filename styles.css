@@ -692,10 +692,65 @@ button:focus-visible {
   color: #345;
 }
 
+.cutting-table-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 16px 0 10px;
+}
+
 .table-shell {
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
+}
+
+/* Fabric usage print sheet — hidden on screen, only shown via window.print()
+   from the "Fabric usage sheet for Master Ji" button. Kept out of normal
+   layout flow so it never affects on-screen scroll/height. */
+.print-only {
+  display: none;
+}
+
+@media print {
+  body > *:not(#fabricAveragePrintSheet) {
+    display: none !important;
+  }
+  #fabricAveragePrintSheet {
+    display: block !important;
+    padding: 0;
+  }
+  #fabricAveragePrintSheet h1 {
+    font-size: 20px;
+    margin: 0 0 2px;
+  }
+  #fabricAveragePrintSheet .print-meta {
+    font-size: 12px;
+    color: #444;
+    margin: 0 0 16px;
+  }
+  #fabricAveragePrintSheet table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  #fabricAveragePrintSheet th,
+  #fabricAveragePrintSheet td {
+    border: 1px solid #999;
+    padding: 6px 8px;
+    text-align: left;
+  }
+  #fabricAveragePrintSheet th {
+    background: #eee;
+  }
+  #fabricAveragePrintSheet .low-confidence {
+    color: #b42318;
+  }
+  #fabricAveragePrintSheet .print-note {
+    margin-top: 12px;
+    font-size: 11px;
+    color: #444;
+  }
 }
 
 table {

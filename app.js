@@ -2039,6 +2039,154 @@ function getAccessoryStockGroups() {
   });
 }
 
+// Builds the SKU-level fabric usage reference: groups every historical
+// cutting entry by (SKU, fabric code) and works out the actual weighted
+// average meters used per piece — from real cutting outcomes, not a
+// re-typed guess. "Recommended" folds in the average correction/wastage
+// too, since that's what the master actually needs to allocate, not just
+// the bare cutting estimate. batchCount < 3 is flagged as low-confidence
+// so a one-off entry doesn't get treated as a settled number.
+function computeFabricAveragesBySku() {
+  const groups = new Map();
+  state.cuttings.forEach((cutting) => {
+    const pieces = getPieces(cutting.sizes);
+    if (pieces <= 0) return;
+    (cutting.fabricComponents || []).forEach((component) => {
+      if (!component.fabricCode) return;
+      const key = `${cutting.sku}||${component.fabricCode}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          sku: cutting.sku,
+          commonName: cutting.commonName,
+          garmentLabels: new Set(),
+          fabricCode: component.fabricCode,
+          totalUsed: 0,
+          totalCorrection: 0,
+          totalPieces: 0,
+          perPieceRates: [],
+          batchCount: 0
+        });
+      }
+      const group = groups.get(key);
+      group.garmentLabels.add(garmentDisplayLabel(cutting));
+      group.totalUsed += toNumber(component.used);
+      group.totalCorrection += toNumber(component.correction);
+      group.totalPieces += pieces;
+      group.perPieceRates.push(toNumber(component.avgFabricUsed));
+      group.batchCount += 1;
+    });
+  });
+
+  return Array.from(groups.values())
+    .map((group) => {
+      const avgPerPiece = group.totalPieces ? group.totalUsed / group.totalPieces : 0;
+      const avgCorrectionPerPiece = group.totalPieces ? group.totalCorrection / group.totalPieces : 0;
+      const fabricRecord = state.fabrics.find((item) => item.code === group.fabricCode);
+      return {
+        sku: group.sku,
+        commonName: group.commonName,
+        garment: Array.from(group.garmentLabels).join(", "),
+        fabricCode: group.fabricCode,
+        fabricName: fabricRecord?.name || "",
+        avgPerPiece,
+        recommended: avgPerPiece + avgCorrectionPerPiece,
+        min: Math.min(...group.perPieceRates),
+        max: Math.max(...group.perPieceRates),
+        batchCount: group.batchCount,
+        reliable: group.batchCount >= 3
+      };
+    })
+    .sort((a, b) => a.sku.localeCompare(b.sku) || a.fabricCode.localeCompare(b.fabricCode));
+}
+
+function downloadBlob(content, filename, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function csvEscape(value) {
+  const str = String(value ?? "");
+  return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
+// Raw export of every cutting entry as-is (backup / record-keeping) —
+// separate from the fabric average sheet below, which is a derived report.
+function exportCuttingEntriesCSV() {
+  if (!state.cuttings.length) {
+    alert("No cutting entries yet to export.");
+    return;
+  }
+  const headers = [
+    "Batch", "SKU", "Name", "Garment", "Date", "Gender",
+    "Fabric Code(s)", "Pieces", "Fabric Used (m)", "Correction (m)", "Stage"
+  ];
+  const rows = sortCuttingsRecent(state.cuttings).map((cutting) => [
+    cutting.batchCode,
+    cutting.sku,
+    cutting.commonName,
+    garmentDisplayLabel(cutting),
+    formatDate(cutting.entryDate),
+    labelGender(cutting.gender),
+    (cutting.fabricComponents || []).map((component) => component.fabricCode).join(" / "),
+    getPieces(cutting.sizes),
+    Number(cutting.fabricUsed || 0).toFixed(2),
+    Number(cutting.correction || 0).toFixed(2),
+    cutting.stage
+  ]);
+  const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(",")).join("\n");
+  downloadBlob(csv, `cutting-entries-${todayDate()}.csv`, "text/csv;charset=utf-8;");
+}
+
+// Fills the hidden #fabricAveragePrintSheet with a SKU-wise fabric usage
+// table and opens the browser print dialog — the master can print it on
+// paper or "Save as PDF" straight from there, no extra library needed.
+function printFabricAverageSheet() {
+  const data = computeFabricAveragesBySku();
+  if (!data.length) {
+    alert("No cutting entries yet — the fabric usage sheet needs at least one saved cutting entry per SKU to calculate an average.");
+    return;
+  }
+  const rows = data.map((row) => `
+    <tr>
+      <td>${escapeHtml(row.sku)}</td>
+      <td>${escapeHtml(row.commonName)}</td>
+      <td>${escapeHtml(row.garment)}</td>
+      <td>${escapeHtml(row.fabricName ? `${row.fabricName} (${row.fabricCode})` : row.fabricCode)}</td>
+      <td>${formatMeters(row.avgPerPiece)}</td>
+      <td>${formatMeters(row.recommended)}</td>
+      <td>${formatMeters(row.min)}&ndash;${formatMeters(row.max)}</td>
+      <td${row.reliable ? "" : ' class="low-confidence"'}>${row.batchCount}${row.reliable ? "" : " (low)"}</td>
+    </tr>
+  `).join("");
+
+  $("#fabricAveragePrintSheet").innerHTML = `
+    <h1>Peekaaboo &mdash; Fabric Usage Sheet</h1>
+    <p class="print-meta">Generated ${formatDate(todayDate())} &mdash; average meters per piece, calculated from actual past cutting entries.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>SKU</th>
+          <th>Name</th>
+          <th>Garment</th>
+          <th>Fabric</th>
+          <th>Avg / piece</th>
+          <th>Recommended (incl. correction)</th>
+          <th>Range seen</th>
+          <th>Batches</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p class="print-note">"Recommended" includes the average correction/wastage seen historically. "Batches (low)" means fewer than 3 cutting entries so far &mdash; treat that number as a starting estimate, not final.</p>
+  `;
+  window.print();
+}
+
 function labelGender(gender) {
   return GENDERS.find(([value]) => value === gender)?.[1] || gender || "\u2014";
 }
@@ -2462,6 +2610,9 @@ function bindEvents() {
     }
     updateCuttingPreview();
   });
+
+  $("#exportCuttingCsvBtn").addEventListener("click", exportCuttingEntriesCSV);
+  $("#fabricAverageSheetBtn").addEventListener("click", printFabricAverageSheet);
 
   $("#addFabricRowBtn").addEventListener("click", () => {
     addFabricComponentRow();

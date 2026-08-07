@@ -319,6 +319,16 @@
           Save cutting entry
         </button>
       </form>
+      <div class="cutting-table-actions">
+        <button class="secondary-action" type="button" id="exportCuttingCsvBtn">
+          <i data-lucide="download" aria-hidden="true"></i>
+          Download entries (CSV)
+        </button>
+        <button class="secondary-action" type="button" id="fabricAverageSheetBtn">
+          <i data-lucide="printer" aria-hidden="true"></i>
+          Fabric usage sheet for Master Ji
+        </button>
+      </div>
       <div class="table-shell">
         <table>
           <thead>
@@ -652,6 +662,8 @@
       </div>
     </form>
   </dialog>
+
+  <div id="fabricAveragePrintSheet" class="print-only" hidden></div>
 
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
