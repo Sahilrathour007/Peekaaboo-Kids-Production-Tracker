@@ -1226,7 +1226,7 @@ function renderStats() {
 
 function renderFabricRows() {
   $("#fabricRows").innerHTML = state.fabrics.length
-    ? state.fabrics.map((fabric) => `
+    ? state.fabrics.slice().reverse().map((fabric) => `
       <tr>
         <td><span class="code-pill">${fabric.code}</span></td>
         <td>${fabric.name}</td>
@@ -1263,7 +1263,7 @@ function joinPair(first, second) {
 
 function renderCuttingRows() {
   $("#cuttingRows").innerHTML = state.cuttings.length
-    ? state.cuttings.map((cutting) => `
+    ? state.cuttings.slice().reverse().map((cutting) => `
       <tr>
         <td><span class="code-pill">${cutting.batchCode}</span></td>
         <td>${cutting.sku}</td>
@@ -1334,7 +1334,7 @@ function renderStagePanels() {
     const slug = STAGE_TAB_SLUGS[stage];
     const container = document.getElementById(`stageBoard-${slug}`);
     if (!container) return;
-    const batches = state.cuttings.filter((cutting) => cutting.stage === stage);
+    const batches = state.cuttings.filter((cutting) => cutting.stage === stage).reverse();
     container.innerHTML = batches.length
       ? batches.map(renderBatchCard).join("")
       : '<p class="empty">No batches</p>';
@@ -1523,7 +1523,7 @@ const AUTO_ADVANCE_ON_FULL_OUTSOURCE = {
 
 function renderOutsourcingRows() {
   $("#outsourcingRows").innerHTML = state.outsourcing.length
-    ? state.outsourcing.map((entry) => `
+    ? state.outsourcing.slice().reverse().map((entry) => `
       <tr>
         <td><span class="stage-pill">${entry.workType}</span></td>
         <td>${entry.vendorName}</td>
@@ -1722,7 +1722,7 @@ function formatReceiptHistory(entry) {
 
 function renderIncomingMaterialRows() {
   $("#incomingMaterialRows").innerHTML = state.outsourcing.length
-    ? state.outsourcing.map((entry) => {
+    ? state.outsourcing.slice().reverse().map((entry) => {
         const fullyReceived = isOutsourcingFullyReceived(entry);
         return `
       <tr>
@@ -1883,7 +1883,7 @@ function formatAccessories(accessories) {
 
 function renderAccessoryRows() {
   $("#accessoryRows").innerHTML = state.cuttings.length
-    ? state.cuttings.map((cutting) => {
+    ? state.cuttings.slice().reverse().map((cutting) => {
       const use = getAccessoryUse(cutting);
       return `
         <tr>
