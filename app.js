@@ -1383,8 +1383,23 @@ function renderBatchCard(cutting) {
   const previousStage = cutting.stageHistory && cutting.stageHistory.length
     ? cutting.stageHistory[cutting.stageHistory.length - 1]
     : null;
-  const backOption = previousStage
-    ? `<button class="secondary-action" type="button" data-move-back="${cutting.id}" data-tooltip="Undo the last stage move">&larr; Back to ${previousStage}</button>`
+  // A dropdown of every OTHER stage this batch could be sent to, not just
+  // a one-click "undo the last move" — the operator might need to correct
+  // something logged three stages back, not just the most recent step.
+  // The stage it actually came from is listed first (and preselected)
+  // since that's the common case, with every other stage available below
+  // it for the less common corrections.
+  const otherStages = STAGES.filter((stage) => stage !== cutting.stage && stage !== previousStage);
+  const orderedStageOptions = previousStage ? [previousStage, ...otherStages] : otherStages;
+  const backOption = remainingPieces > 0 && orderedStageOptions.length
+    ? `
+      <div class="back-to-stage">
+        <select data-back-to-select="${cutting.id}" aria-label="Choose a stage to send this batch back to">
+          ${orderedStageOptions.map((stage) => `<option value="${escapeHtml(stage)}">${escapeHtml(stage)}</option>`).join("")}
+        </select>
+        <button class="secondary-action" type="button" data-move-back-to="${cutting.id}" data-tooltip="Send this batch back to the selected stage">&larr; Send back</button>
+      </div>
+    `
     : "";
   // Every transition (in-house move or outsource) now requires there to be
   // remaining, uncommitted pieces to act on — "move" used to fire on the
@@ -1470,6 +1485,10 @@ function applyStageMove(cutting, stage) {
   cutting.sizesRemaining = { ...cutting.sizes };
   if (stage === "Finished Goods") {
     cutting.finishedGoodsDate = todayDate();
+  } else {
+    // Moving away from Finished Goods (e.g. sending a batch back for
+    // rework) — the "in stock since" date no longer applies.
+    delete cutting.finishedGoodsDate;
   }
 }
 
@@ -2895,16 +2914,13 @@ function bindEvents() {
       if (cutting) openMoveQtyDialog(cutting, moveQtyTrigger.dataset.targetStage, moveQtyTrigger.dataset.targetLabel);
     }
 
-    const moveBack = event.target.closest("[data-move-back]");
-    if (moveBack) {
-      const cutting = state.cuttings.find((item) => item.id === moveBack.dataset.moveBack);
-      if (cutting && cutting.stageHistory && cutting.stageHistory.length) {
-        if (cutting.stage === "Finished Goods") {
-          delete cutting.finishedGoodsDate;
-        }
-        cutting.stage = cutting.stageHistory.pop();
-        saveState();
-        renderAll();
+    const moveBackTo = event.target.closest("[data-move-back-to]");
+    if (moveBackTo) {
+      const cutting = state.cuttings.find((item) => item.id === moveBackTo.dataset.moveBackTo);
+      const select = moveBackTo.closest(".back-to-stage")?.querySelector("[data-back-to-select]");
+      const targetStage = select?.value;
+      if (cutting && targetStage) {
+        openMoveQtyDialog(cutting, targetStage, `Send back to ${targetStage}`);
       }
     }
 
