@@ -73,13 +73,23 @@ main {
 }
 
 .header-actions,
-.tabs,
 .calculation-strip,
 .row-actions {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 8px;
+  padding: 10px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
 }
 
 .sync-status {
@@ -178,8 +188,8 @@ main {
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
+  gap: 14px;
+  margin-bottom: 20px;
 }
 
 .stat,
@@ -211,13 +221,27 @@ main {
 }
 
 .tab {
-  padding: 10px 14px;
+  padding: 10px 16px;
+  font-size: 13.5px;
+  font-weight: 650;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .tab.active {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+}
+
+.tab:not(.active):hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tab.entry-tab:not(.active):hover {
+  border-color: var(--entry);
+  color: var(--entry);
 }
 
 /* Marks the primary-nav tabs where you actually add new records (Fabric
@@ -446,8 +470,8 @@ main {
 .cutting-layout {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
+  gap: 14px 16px;
+  margin-bottom: 20px;
 }
 
 .form-grid.compact {
@@ -460,21 +484,23 @@ main {
 
 label {
   display: grid;
-  gap: 6px;
+  gap: 7px;
   color: #344054;
   font-size: 13px;
   font-weight: 650;
+  line-height: 1.35;
 }
 
 input,
 select {
   width: 100%;
-  min-height: 40px;
+  min-height: 42px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 9px 12px;
   background: #fff;
   color: var(--ink);
+  font-size: 14px;
 }
 
 input[readonly] {
@@ -543,27 +569,46 @@ button:focus-visible {
   left: 0;
   right: 0;
   z-index: 20;
-  max-height: 260px;
+  max-height: 320px;
   overflow-y: auto;
+  overflow-x: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
   box-shadow: var(--shadow);
 }
 
+/* Stacked (not row) so long sublabels wrap onto their own line instead of
+   forcing the row wider than the menu and triggering a horizontal
+   scrollbar — that was cutting text off on the right edge. */
 .autocomplete-option {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 9px 12px;
-  font-size: 13px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px 12px;
+  font-size: 13.5px;
+  line-height: 1.4;
   cursor: pointer;
+  border-bottom: 1px solid var(--line);
+}
+
+.autocomplete-option:last-child {
+  border-bottom: 0;
+}
+
+.autocomplete-option span {
+  color: var(--ink);
+  font-weight: 600;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .autocomplete-option small {
-  flex-shrink: 0;
   color: var(--muted);
+  font-size: 12px;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .autocomplete-option.active,
