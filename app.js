@@ -1205,7 +1205,12 @@ function getCuttingCalculation() {
   const pieces = getSetPieces(readGarmentComponentRows());
   const correctionPercent = toNumber(form.correctionPercent.value);
   const components = readFabricComponentRows().map((entry) => {
-    const used = entry.avgFabricUsed * pieces;
+    // avgFabricUsed is entered in centimetres per piece, but fabric stock
+    // (totalLength/consumed/remaining) is tracked in metres — divide by 100
+    // here so "used" lines up with the metre-based fabric figures. This is
+    // the only place the cm value crosses into metres; avgFabricUsed itself
+    // stays in cm everywhere else (display, storage) as entered.
+    const used = (entry.avgFabricUsed / 100) * pieces;
     const correction = (toNumber(entry.fabric?.totalLength) * correctionPercent) / 100;
     const remaining = toNumber(entry.fabric?.totalLength) - toNumber(entry.fabric?.consumed) - used - correction;
     return { ...entry, used, correction, remaining };
@@ -2179,6 +2184,55 @@ function printFabricAverageSheet() {
   };
 }
 
+// One-time fix for cutting entries saved before the cm/m unit bug was
+// fixed: "Avg used/piece" has always been entered in centimetres, but the
+// fabric math used to multiply it straight into pieces with no /100 —
+// treating it as metres — so every historical component.used and
+// cutting.fabricUsed is 100x too large. Correction amounts are untouched:
+// they're derived from fabric.totalLength (already in metres), never from
+// avgFabricUsed, so they were never wrong. Every fabric's consumed total is
+// then rebuilt from scratch, since it's fully derived from cuttings (the
+// only two places that ever touch fabric.consumed are cutting save/delete).
+function migrateCmMeterFabricBug() {
+  const affected = state.cuttings.filter((cutting) =>
+    (cutting.fabricComponents || []).some((component) => toNumber(component.used) > 0)
+  );
+  if (!affected.length) {
+    alert("No cutting entries with fabric usage found \u2014 nothing to fix.");
+    return;
+  }
+  const confirmed = confirm(
+    `This will divide the recorded "fabric used" figure by 100 on ${affected.length} cutting ` +
+    `entr${affected.length === 1 ? "y" : "ies"} (correction amounts are left as-is \u2014 those were ` +
+    `already correct), then recalculate every fabric's remaining stock from scratch. ` +
+    `Run this only once. Continue?`
+  );
+  if (!confirmed) return;
+
+  state.cuttings.forEach((cutting) => {
+    let fixedUsed = 0;
+    (cutting.fabricComponents || []).forEach((component) => {
+      component.used = toNumber(component.used) / 100;
+      fixedUsed += component.used;
+    });
+    cutting.fabricUsed = fixedUsed;
+  });
+
+  state.fabrics.forEach((fabric) => {
+    fabric.consumed = 0;
+  });
+  state.cuttings.forEach((cutting) => {
+    (cutting.fabricComponents || []).forEach((component) => {
+      const fabric = state.fabrics.find((item) => item.code === component.fabricCode);
+      if (fabric) fabric.consumed += toNumber(component.used) + toNumber(component.correction);
+    });
+  });
+
+  saveState();
+  renderAll();
+  alert(`Fixed ${affected.length} cutting entr${affected.length === 1 ? "y" : "ies"} and recalculated fabric stock.`);
+}
+
 function labelGender(gender) {
   return GENDERS.find(([value]) => value === gender)?.[1] || gender || "\u2014";
 }
@@ -2259,7 +2313,7 @@ function addFabricComponentRow(fabricCode = "", avgUsed = "", required = null) {
   wrapper.dataset.fabricCode = fabricCode;
   wrapper.innerHTML = `
     <input class="fabric-search" data-role="search" autocomplete="off" placeholder="Search style/nickname, fabric name, print, colour, or code">
-    <input class="fabric-avg-used" data-role="avgUsed" type="number" min="0.01" step="0.01" placeholder="Avg used/piece (m) \u2014 required" value="${avgUsed}">
+    <input class="fabric-avg-used" data-role="avgUsed" type="number" min="0.1" step="0.1" placeholder="Avg used/piece (cm) \u2014 required" value="${avgUsed}">
     <input class="fabric-print" data-role="printType" readonly placeholder="Print">
     <input class="fabric-colour" data-role="colour" readonly placeholder="Colour">
     <button class="icon-button danger" type="button" data-remove-fabric-row aria-label="Remove this fabric" data-tooltip="Remove">
@@ -2603,6 +2657,7 @@ function bindEvents() {
     updateCuttingPreview();
   });
 
+  $("#fixCmMeterBugBtn").addEventListener("click", migrateCmMeterFabricBug);
   $("#exportCuttingCsvBtn").addEventListener("click", exportCuttingEntriesCSV);
   $("#fabricAverageSheetBtn").addEventListener("click", printFabricAverageSheet);
 

@@ -102,6 +102,9 @@
         <i data-lucide="upload" aria-hidden="true"></i>
         <input id="importInput" type="file" accept="application/json">
       </label>
+      <button class="icon-button" id="fixCmMeterBugBtn" type="button" aria-label="Fix cm/m fabric bug" data-tooltip="One-time fix: old cutting entries used cm as if it were meters">
+        <i data-lucide="wrench" aria-hidden="true"></i>
+      </button>
       <button class="icon-button danger" id="resetBtn" type="button" aria-label="Clear all data" data-tooltip="Clear all data">
         <i data-lucide="trash-2" aria-hidden="true"></i>
       </button>
@@ -292,7 +295,7 @@
           </div>
           <div class="fabric-row-legend" aria-hidden="true">
             <span>Fabric<span class="req">*</span></span>
-            <span>Avg used/piece (m)<span class="req">*</span></span>
+            <span>Avg used/piece (cm)<span class="req">*</span></span>
             <span>Print</span>
             <span>Colour</span>
             <span></span>
