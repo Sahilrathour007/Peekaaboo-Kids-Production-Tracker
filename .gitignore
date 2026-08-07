@@ -5,7 +5,6 @@ node_modules/
 .env
 .env.*
 !.env.example
-supabase-config.js
 config.js
 config.local.js
 secrets.*
