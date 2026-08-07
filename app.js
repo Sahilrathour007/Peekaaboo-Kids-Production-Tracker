@@ -1538,6 +1538,9 @@ function renderOutsourcingRows() {
         <td>${entry.deliveryDate}</td>
         <td>${formatAccessories(entry.accessories)}</td>
         <td class="num">
+          <button class="icon-button" type="button" data-print-outsourcing="${entry.id}" aria-label="Download receipt" data-tooltip="Download receipt">
+            <i data-lucide="file-text" aria-hidden="true"></i>
+          </button>
           <button class="icon-button danger" type="button" data-delete-outsourcing="${entry.id}" aria-label="Delete outsourcing entry" data-tooltip="Delete">
             <i data-lucide="trash-2" aria-hidden="true"></i>
           </button>
@@ -1545,6 +1548,169 @@ function renderOutsourcingRows() {
       </tr>
     `).join("")
     : emptyRow(10);
+}
+
+// Fill these in once with your real business details — they're reused on
+// every printed receipt. Left blank fields are simply omitted from the
+// letterhead instead of printing "undefined" or an empty line.
+const COMPANY_INFO = {
+  name: "Peekaaboo Kids",
+  tagline: "Kids' Apparel Production",
+  address: "",
+  phone: "",
+  gstin: ""
+};
+
+// Builds a print-ready outsourcing work order / receipt for one entry and
+// opens it in a new tab, triggering the browser's print dialog (from which
+// the user can "Save as PDF"). Kept as plain HTML + window.print() rather
+// than a PDF library so there's no extra dependency and the layout is easy
+// to restyle later — see the <style> block below.
+function openOutsourcingReceipt(entry) {
+  const index = state.outsourcing.findIndex((item) => item.id === entry.id);
+  const receiptNo = `OUT-${String(index + 1).padStart(4, "0")}`;
+  const total = getOutsourcingTotal(entry);
+  const paid = getOutsourcingAmountPaid(entry);
+  const balance = getOutsourcingAmountLeft(entry);
+
+  const sizeRows = SIZES
+    .filter(([name]) => toNumber(entry.sizes?.[name]) > 0)
+    .map(([name, label]) => `<tr><td>${label}</td><td class="num">${formatQty(entry.sizes[name])}</td></tr>`)
+    .join("");
+
+  const letterheadLines = [COMPANY_INFO.address, COMPANY_INFO.phone, COMPANY_INFO.gstin ? `GSTIN: ${COMPANY_INFO.gstin}` : ""]
+    .filter(Boolean)
+    .map((line) => `<div>${escapeHtml(line)}</div>`)
+    .join("");
+
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Receipt ${receiptNo}</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Inter, ui-sans-serif, system-ui, sans-serif;
+    color: #1d2129;
+    margin: 0;
+    padding: 40px;
+    max-width: 780px;
+    margin-inline: auto;
+  }
+  .letterhead {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 3px solid #006d77;
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+  }
+  .letterhead h1 { margin: 0; font-size: 22px; color: #006d77; }
+  .letterhead p { margin: 2px 0 0; color: #667085; font-size: 13px; }
+  .letterhead .meta { text-align: right; font-size: 13px; color: #475467; }
+  .letterhead .meta strong { display: block; font-size: 16px; color: #1d2129; }
+  .parties {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .parties .box {
+    border: 1px solid #d9dee7;
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .parties .box span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #667085; margin-bottom: 4px; }
+  .parties .box strong { font-size: 15px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  th, td { padding: 9px 10px; border-bottom: 1px solid #e4e7ec; text-align: left; font-size: 13px; }
+  th { background: #f6f7f9; color: #475467; font-size: 11px; text-transform: uppercase; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .sizes-table { width: 260px; margin-bottom: 24px; }
+  .totals { width: 260px; margin-left: auto; margin-bottom: 32px; }
+  .totals tr td:first-child { color: #667085; }
+  .totals tr.grand td { font-size: 16px; font-weight: 700; border-top: 2px solid #1d2129; border-bottom: none; padding-top: 10px; }
+  .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 60px; }
+  .signatures .line { border-top: 1px solid #1d2129; padding-top: 6px; font-size: 12px; color: #475467; }
+  @media print {
+    body { padding: 0; }
+    @page { margin: 18mm; }
+  }
+</style>
+</head>
+<body>
+  <div class="letterhead">
+    <div>
+      <h1>${escapeHtml(COMPANY_INFO.name)}</h1>
+      <p>${escapeHtml(COMPANY_INFO.tagline)}</p>
+      ${letterheadLines}
+    </div>
+    <div class="meta">
+      <strong>Outsourcing Work Order</strong>
+      Receipt No: ${receiptNo}<br>
+      Date: ${formatDate(entry.deliveryDate)}
+    </div>
+  </div>
+
+  <div class="parties">
+    <div class="box">
+      <span>Vendor</span>
+      <strong>${escapeHtml(entry.vendorName)}</strong>
+      <div>Work: ${escapeHtml(entry.workType)}</div>
+    </div>
+    <div class="box">
+      <span>Item</span>
+      <strong>${escapeHtml(entry.commonName)}</strong>
+      <div>SKU: ${escapeHtml(entry.sku)}</div>
+    </div>
+  </div>
+
+  <table class="sizes-table">
+    <thead><tr><th>Size</th><th class="num">Qty</th></tr></thead>
+    <tbody>${sizeRows || '<tr><td colspan="2">&mdash;</td></tr>'}</tbody>
+  </table>
+
+  <table>
+    <thead>
+      <tr><th>Description</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>${escapeHtml(entry.workType)} &mdash; ${escapeHtml(entry.commonName)}</td>
+        <td class="num">${formatQty(getPieces(entry.sizes))}</td>
+        <td class="num">${formatMoney(entry.rate)}</td>
+        <td class="num">${formatMoney(total)}</td>
+      </tr>
+      <tr>
+        <td colspan="4">Accessories supplied: ${escapeHtml(formatAccessories(entry.accessories))}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table class="totals">
+    <tr><td>Total amount</td><td class="num">${formatMoney(total)}</td></tr>
+    <tr><td>Paid</td><td class="num">${formatMoney(paid)}</td></tr>
+    <tr class="grand"><td>Balance due</td><td class="num">${formatMoney(balance)}</td></tr>
+  </table>
+
+  <div class="signatures">
+    <div class="line">Vendor signature</div>
+    <div class="line">Authorised signatory</div>
+  </div>
+
+  <script>window.onload = () => setTimeout(() => window.print(), 200);</script>
+</body>
+</html>`;
+
+  const receiptWindow = window.open("", "_blank");
+  if (!receiptWindow) {
+    alert("Please allow pop-ups to download the receipt.");
+    return;
+  }
+  receiptWindow.document.open();
+  receiptWindow.document.write(html);
+  receiptWindow.document.close();
 }
 
 function formatReceiptHistory(entry) {
@@ -2665,6 +2831,12 @@ function bindEvents() {
         switchTab("outsourcing");
         prefillOutsourcingFromCutting(cutting, outsourcePrefill.dataset.outsourceWorkType || "Stitching");
       }
+    }
+
+    const printOutsourcing = event.target.closest("[data-print-outsourcing]");
+    if (printOutsourcing) {
+      const entry = state.outsourcing.find((item) => item.id === printOutsourcing.dataset.printOutsourcing);
+      if (entry) openOutsourcingReceipt(entry);
     }
 
     const deleteOutsourcing = event.target.closest("[data-delete-outsourcing]");
