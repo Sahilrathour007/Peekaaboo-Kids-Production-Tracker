@@ -622,6 +622,23 @@ function toNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+// Reversing state.cuttings only reflects the order records were *pushed*
+// (created or split off) — a batch split months after it was originally cut
+// gets pushed late and jumps to the top even though its entryDate is old.
+// Sorting by entryDate (the date the operator actually assigns to the cut)
+// descending is what "most recently saved" means to someone reading the
+// list, with array position as a tie-break for same-day entries so newer
+// pushes still win ties.
+function sortCuttingsRecent(list) {
+  return list
+    .map((cutting, index) => ({ cutting, index }))
+    .sort((a, b) => {
+      const dateCompare = (b.cutting.entryDate || "").localeCompare(a.cutting.entryDate || "");
+      return dateCompare !== 0 ? dateCompare : b.index - a.index;
+    })
+    .map((item) => item.cutting);
+}
+
 function todayDate() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -1263,7 +1280,7 @@ function joinPair(first, second) {
 
 function renderCuttingRows() {
   $("#cuttingRows").innerHTML = state.cuttings.length
-    ? state.cuttings.slice().reverse().map((cutting) => `
+    ? sortCuttingsRecent(state.cuttings).map((cutting) => `
       <tr>
         <td><span class="code-pill">${cutting.batchCode}</span></td>
         <td>${cutting.sku}</td>
@@ -1304,7 +1321,7 @@ function renderOverviewRows() {
     overviewFilter === "all" || getOverviewCategory(cutting) === overviewFilter
   );
   $("#overviewRows").innerHTML = rows.length
-    ? rows.slice().reverse().map((cutting) => {
+    ? sortCuttingsRecent(rows).map((cutting) => {
         const category = getOverviewCategory(cutting);
         return `
       <tr>
@@ -1334,7 +1351,7 @@ function renderStagePanels() {
     const slug = STAGE_TAB_SLUGS[stage];
     const container = document.getElementById(`stageBoard-${slug}`);
     if (!container) return;
-    const batches = state.cuttings.filter((cutting) => cutting.stage === stage).reverse();
+    const batches = sortCuttingsRecent(state.cuttings.filter((cutting) => cutting.stage === stage));
     container.innerHTML = batches.length
       ? batches.map(renderBatchCard).join("")
       : '<p class="empty">No batches</p>';
@@ -1883,7 +1900,7 @@ function formatAccessories(accessories) {
 
 function renderAccessoryRows() {
   $("#accessoryRows").innerHTML = state.cuttings.length
-    ? state.cuttings.slice().reverse().map((cutting) => {
+    ? sortCuttingsRecent(state.cuttings).map((cutting) => {
       const use = getAccessoryUse(cutting);
       return `
         <tr>
