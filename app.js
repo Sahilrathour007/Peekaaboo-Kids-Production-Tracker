@@ -2039,64 +2039,46 @@ function getAccessoryStockGroups() {
   });
 }
 
-// Builds the SKU-level fabric usage reference: groups every historical
-// cutting entry by (SKU, fabric code) and works out the actual weighted
-// average meters used per piece — from real cutting outcomes, not a
-// re-typed guess. "Recommended" folds in the average correction/wastage
-// too, since that's what the master actually needs to allocate, not just
-// the bare cutting estimate. batchCount < 3 is flagged as low-confidence
-// so a one-off entry doesn't get treated as a settled number.
-function computeFabricAveragesBySku() {
+// Builds the SKU-level fabric usage reference: merges every historical
+// cutting entry for the same SKU into one row (so a SKU cut 3 times shows
+// once, not 3 times) and works out the actual weighted average meters used
+// per piece — from real cutting outcomes, not a re-typed guess. "Sizes"
+// lists every size this SKU has actually been cut in so far. batchCount
+// lets a low-data row (e.g. cut only once) be told apart from a settled one.
+function computeSkuFabricAverages() {
   const groups = new Map();
   state.cuttings.forEach((cutting) => {
     const pieces = getPieces(cutting.sizes);
-    if (pieces <= 0) return;
-    (cutting.fabricComponents || []).forEach((component) => {
-      if (!component.fabricCode) return;
-      const key = `${cutting.sku}||${component.fabricCode}`;
-      if (!groups.has(key)) {
-        groups.set(key, {
-          sku: cutting.sku,
-          commonName: cutting.commonName,
-          garmentLabels: new Set(),
-          fabricCode: component.fabricCode,
-          totalUsed: 0,
-          totalCorrection: 0,
-          totalPieces: 0,
-          perPieceRates: [],
-          batchCount: 0
-        });
-      }
-      const group = groups.get(key);
-      group.garmentLabels.add(garmentDisplayLabel(cutting));
-      group.totalUsed += toNumber(component.used);
-      group.totalCorrection += toNumber(component.correction);
-      group.totalPieces += pieces;
-      group.perPieceRates.push(toNumber(component.avgFabricUsed));
-      group.batchCount += 1;
+    if (pieces <= 0 || !cutting.sku) return;
+    if (!groups.has(cutting.sku)) {
+      groups.set(cutting.sku, {
+        sku: cutting.sku,
+        commonName: cutting.commonName,
+        sizesSeen: new Set(),
+        totalFabricUsed: 0,
+        totalPieces: 0,
+        batchCount: 0
+      });
+    }
+    const group = groups.get(cutting.sku);
+    SIZES.forEach(([code]) => {
+      if (toNumber(cutting.sizes?.[code]) > 0) group.sizesSeen.add(code);
     });
+    group.totalFabricUsed += toNumber(cutting.fabricUsed);
+    group.totalPieces += pieces;
+    group.batchCount += 1;
   });
 
   return Array.from(groups.values())
-    .map((group) => {
-      const avgPerPiece = group.totalPieces ? group.totalUsed / group.totalPieces : 0;
-      const avgCorrectionPerPiece = group.totalPieces ? group.totalCorrection / group.totalPieces : 0;
-      const fabricRecord = state.fabrics.find((item) => item.code === group.fabricCode);
-      return {
-        sku: group.sku,
-        commonName: group.commonName,
-        garment: Array.from(group.garmentLabels).join(", "),
-        fabricCode: group.fabricCode,
-        fabricName: fabricRecord?.name || "",
-        avgPerPiece,
-        recommended: avgPerPiece + avgCorrectionPerPiece,
-        min: Math.min(...group.perPieceRates),
-        max: Math.max(...group.perPieceRates),
-        batchCount: group.batchCount,
-        reliable: group.batchCount >= 3
-      };
-    })
-    .sort((a, b) => a.sku.localeCompare(b.sku) || a.fabricCode.localeCompare(b.fabricCode));
+    .map((group) => ({
+      sku: group.sku,
+      commonName: group.commonName,
+      sizeLabel: SIZES.filter(([code]) => group.sizesSeen.has(code)).map(([, label]) => label).join(", "),
+      avgPerPiece: group.totalPieces ? group.totalFabricUsed / group.totalPieces : 0,
+      batchCount: group.batchCount,
+      reliable: group.batchCount >= 3
+    }))
+    .sort((a, b) => a.sku.localeCompare(b.sku));
 }
 
 function downloadBlob(content, filename, type) {
@@ -2142,11 +2124,12 @@ function exportCuttingEntriesCSV() {
   downloadBlob(csv, `cutting-entries-${todayDate()}.csv`, "text/csv;charset=utf-8;");
 }
 
-// Fills the hidden #fabricAveragePrintSheet with a SKU-wise fabric usage
-// table and opens the browser print dialog — the master can print it on
-// paper or "Save as PDF" straight from there, no extra library needed.
+// Opens a standalone print window with just the fabric usage table (rather
+// than hiding the live app via @media print) so the browser always has a
+// clean, fully-rendered document to print/save as PDF from — no dependency
+// on the main page's own stylesheet or render timing.
 function printFabricAverageSheet() {
-  const data = computeFabricAveragesBySku();
+  const data = computeSkuFabricAverages();
   if (!data.length) {
     alert("No cutting entries yet — the fabric usage sheet needs at least one saved cutting entry per SKU to calculate an average.");
     return;
@@ -2155,36 +2138,45 @@ function printFabricAverageSheet() {
     <tr>
       <td>${escapeHtml(row.sku)}</td>
       <td>${escapeHtml(row.commonName)}</td>
-      <td>${escapeHtml(row.garment)}</td>
-      <td>${escapeHtml(row.fabricName ? `${row.fabricName} (${row.fabricCode})` : row.fabricCode)}</td>
-      <td>${formatMeters(row.avgPerPiece)}</td>
-      <td>${formatMeters(row.recommended)}</td>
-      <td>${formatMeters(row.min)}&ndash;${formatMeters(row.max)}</td>
-      <td${row.reliable ? "" : ' class="low-confidence"'}>${row.batchCount}${row.reliable ? "" : " (low)"}</td>
+      <td>${escapeHtml(row.sizeLabel || "\u2014")}</td>
+      <td>${formatMeters(row.avgPerPiece)}${row.reliable ? "" : ' <span class="low-confidence">(low data)</span>'}</td>
     </tr>
   `).join("");
 
-  $("#fabricAveragePrintSheet").innerHTML = `
-    <h1>Peekaaboo &mdash; Fabric Usage Sheet</h1>
-    <p class="print-meta">Generated ${formatDate(todayDate())} &mdash; average meters per piece, calculated from actual past cutting entries.</p>
-    <table>
-      <thead>
-        <tr>
-          <th>SKU</th>
-          <th>Name</th>
-          <th>Garment</th>
-          <th>Fabric</th>
-          <th>Avg / piece</th>
-          <th>Recommended (incl. correction)</th>
-          <th>Range seen</th>
-          <th>Batches</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <p class="print-note">"Recommended" includes the average correction/wastage seen historically. "Batches (low)" means fewer than 3 cutting entries so far &mdash; treat that number as a starting estimate, not final.</p>
-  `;
-  window.print();
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8"><title>Peekaaboo Fabric Usage Sheet</title>
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; padding: 24px; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 2px; }
+  .meta { font-size: 12px; color: #444; margin: 0 0 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { border: 1px solid #999; padding: 6px 8px; text-align: left; }
+  th { background: #eee; }
+  .low-confidence { color: #b42318; font-size: 11px; }
+  .note { margin-top: 12px; font-size: 11px; color: #444; }
+</style></head>
+<body>
+  <h1>Peekaaboo &mdash; Fabric Usage Sheet</h1>
+  <p class="meta">Generated ${formatDate(todayDate())} &mdash; average meters used per piece, calculated from actual past cutting entries. One row per SKU.</p>
+  <table>
+    <thead><tr><th>SKU</th><th>Name</th><th>Sizes cut</th><th>Avg cloth used / piece</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <p class="note">(low data) means fewer than 3 cutting entries recorded for that SKU so far &mdash; treat as a starting estimate, not final.</p>
+</body></html>`;
+
+  const printWindow = window.open("", "_blank", "width=900,height=700");
+  if (!printWindow) {
+    alert("Pop-up blocked \u2014 please allow pop-ups for this site and try again.");
+    return;
+  }
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.onload = () => {
+    printWindow.focus();
+    printWindow.print();
+  };
 }
 
 function labelGender(gender) {
