@@ -1372,7 +1372,7 @@ function renderOverviewRows() {
 const OVERVIEW_STATUS_COLORS = {
   "cutting-schedule": "#8f5f00",
   wip: "#6941c6",
-  "finished-goods": "#027a48"
+  "finished-goods": "#14b866"
 };
 
 // Drives the donut + legend above the Overview table. Buckets every batch's
