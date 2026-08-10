@@ -1886,16 +1886,22 @@ function pendingOutsourcingEntries() {
   return state.outsourcing.filter((entry) => getOutsourcingPendingQty(entry) > 0);
 }
 
-function populateReceiveEntryOptions(selectedId) {
+// filterText, if given, narrows the list to entries whose vendor name
+// contains it (case-insensitive) — powers the "search vendor" box.
+function populateReceiveEntryOptions(selectedId, filterText) {
   const select = $("#receiveEntrySelect");
-  const options = pendingOutsourcingEntries();
+  const needle = String(filterText || "").trim().toLowerCase();
+  const allOptions = pendingOutsourcingEntries();
+  const options = needle
+    ? allOptions.filter((entry) => entry.vendorName.toLowerCase().includes(needle))
+    : allOptions;
   select.innerHTML = options.length
     ? options.map((entry) => `
         <option value="${entry.id}">
           ${escapeHtml(entry.workType)} \u00b7 ${escapeHtml(entry.vendorName)} \u00b7 ${escapeHtml(entry.commonName)} (${formatQty(getOutsourcingPendingQty(entry))} pending)
         </option>
       `).join("")
-    : '<option value="">No pending entries</option>';
+    : `<option value="">${needle ? "No pending entries for that vendor" : "No pending entries"}</option>`;
   select.value = selectedId && options.some((entry) => entry.id === selectedId) ? selectedId : (options[0]?.id || "");
 }
 
@@ -1927,7 +1933,11 @@ function applyReceiveEntryToDialog(entry) {
 }
 
 function openReceiveDialog(entry) {
-  populateReceiveEntryOptions(entry?.id);
+  // Pre-fill the search box with the vendor name when opened from a specific
+  // row so the dropdown stays scoped to that vendor; leave it blank when
+  // opened from the panel's top-level button so every pending entry shows.
+  $("#receiveVendorSearch").value = entry?.vendorName || "";
+  populateReceiveEntryOptions(entry?.id, entry?.vendorName);
   const selectedId = $("#receiveEntrySelect").value;
   const selectedEntry = state.outsourcing.find((item) => item.id === selectedId) || null;
   $("#receiveDate").value = todayDate();
@@ -3082,6 +3092,13 @@ function bindEvents() {
   $("#receiveEntrySelect").addEventListener("change", (event) => {
     const entry = state.outsourcing.find((item) => item.id === event.target.value) || null;
     applyReceiveEntryToDialog(entry);
+  });
+
+  $("#receiveVendorSearch").addEventListener("input", (event) => {
+    populateReceiveEntryOptions(null, event.target.value);
+    const selectedId = $("#receiveEntrySelect").value;
+    const selectedEntry = state.outsourcing.find((item) => item.id === selectedId) || null;
+    applyReceiveEntryToDialog(selectedEntry);
   });
 
   $("#addReceiptBtn").addEventListener("click", () => {
