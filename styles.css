@@ -299,6 +299,109 @@ main {
   color: #fff;
 }
 
+.status-chart-card {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  flex-wrap: wrap;
+}
+
+.status-chart-donut {
+  position: relative;
+  flex: 0 0 auto;
+  width: 120px;
+  height: 120px;
+}
+
+.status-chart-donut svg circle {
+  transition: stroke-dasharray 0.25s ease;
+}
+
+.status-chart-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.status-chart-donut-center strong {
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.status-chart-donut-center span {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.status-chart-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1 1 260px;
+  min-width: 220px;
+}
+
+.status-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+}
+
+.status-legend-item:hover {
+  background: var(--soft);
+}
+
+.status-legend-item.active {
+  border-color: var(--line);
+  background: var(--soft);
+}
+
+.status-legend-swatch {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.status-legend-label {
+  flex: 1 1 auto;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.status-legend-value {
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.status-legend-value small {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
 .section-heading {
   display: flex;
   justify-content: space-between;

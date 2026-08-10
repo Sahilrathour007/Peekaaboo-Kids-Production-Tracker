@@ -200,6 +200,16 @@
           <p>Every cutting batch by SKU and common name, with size-wise quantity and where it currently stands. Batches move between these automatically as you advance them through the stage tabs &mdash; freshly cut sits in "Cutting complete", anything past that and before Finished Goods counts as WIP (with its exact stage shown), and completed batches land in "Finished goods".</p>
         </div>
       </div>
+      <div class="status-chart-card" id="overviewStatusCard">
+        <div class="status-chart-donut">
+          <svg viewBox="0 0 120 120" width="120" height="120" id="overviewDonut" role="img" aria-label="Production status breakdown by pieces"></svg>
+          <div class="status-chart-donut-center">
+            <strong id="overviewDonutTotal">0</strong>
+            <span>pieces</span>
+          </div>
+        </div>
+        <div class="status-chart-legend" id="overviewStatusLegend" role="group" aria-label="Filter by status"></div>
+      </div>
       <div class="filter-tabs" id="overviewFilters" role="group" aria-label="Filter by status">
         <button class="filter-tab active" type="button" data-overview-filter="all">All</button>
         <button class="filter-tab" type="button" data-overview-filter="cutting-schedule">Cutting complete</button>

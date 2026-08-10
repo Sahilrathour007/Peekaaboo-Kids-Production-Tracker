@@ -1222,6 +1222,7 @@ function getCuttingCalculation() {
 
 function renderAll() {
   renderOverviewRows();
+  renderOverviewStatusChart();
   renderFabricRows();
   renderCuttingRows();
   renderStagePanels();
@@ -1364,6 +1365,68 @@ function renderOverviewRows() {
     `;
       }).join("")
     : emptyRow(6);
+}
+
+// Colours for the three Overview buckets, reused by both the donut chart
+// and its legend so a category always reads the same colour everywhere.
+const OVERVIEW_STATUS_COLORS = {
+  "cutting-schedule": "#8f5f00",
+  wip: "#6941c6",
+  "finished-goods": "#027a48"
+};
+
+// Drives the donut + legend above the Overview table. Buckets every batch's
+// PIECES (not batch count) into cutting-complete / WIP / finished-goods so
+// it answers "how many pieces are where" at a glance, and doubles as a
+// clickable filter — same job as the pill buttons below it.
+function renderOverviewStatusChart() {
+  const categories = ["cutting-schedule", "wip", "finished-goods"];
+  const counts = { "cutting-schedule": 0, wip: 0, "finished-goods": 0 };
+  state.cuttings.forEach((cutting) => {
+    counts[getOverviewCategory(cutting)] += getPieces(cutting.sizes);
+  });
+  const total = counts["cutting-schedule"] + counts.wip + counts["finished-goods"];
+
+  const radius = 52;
+  const circumference = 2 * Math.PI * radius;
+  let offsetAccum = 0;
+  const donut = $("#overviewDonut");
+  if (donut) {
+    donut.innerHTML = total > 0
+      ? categories.map((cat) => {
+          const dash = (counts[cat] / total) * circumference;
+          const circle = `<circle cx="60" cy="60" r="${radius}" fill="none" stroke="${OVERVIEW_STATUS_COLORS[cat]}" stroke-width="16" stroke-dasharray="${dash} ${circumference - dash}" stroke-dashoffset="${-offsetAccum}" transform="rotate(-90 60 60)" />`;
+          offsetAccum += dash;
+          return circle;
+        }).join("")
+      : `<circle cx="60" cy="60" r="${radius}" fill="none" stroke="var(--line)" stroke-width="16" />`;
+  }
+  const totalEl = $("#overviewDonutTotal");
+  if (totalEl) totalEl.textContent = formatQty(total);
+
+  const legend = $("#overviewStatusLegend");
+  if (legend) {
+    legend.innerHTML = categories.map((cat) => {
+      const value = counts[cat];
+      const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+      return `
+        <button type="button" class="status-legend-item${overviewFilter === cat ? " active" : ""}" data-overview-filter="${cat}">
+          <span class="status-legend-swatch" style="background:${OVERVIEW_STATUS_COLORS[cat]}"></span>
+          <span class="status-legend-label">${OVERVIEW_STATUS_LABELS[cat]}</span>
+          <span class="status-legend-value">${formatQty(value)}<small>${pct}%</small></span>
+        </button>
+      `;
+    }).join("");
+  }
+}
+
+// Shared by both the filter-tab pills and the donut legend so either one
+// keeps the other (and the table) in sync.
+function setOverviewFilter(filter) {
+  overviewFilter = filter;
+  $$("#overviewFilters .filter-tab").forEach((el) => el.classList.toggle("active", el.dataset.overviewFilter === filter));
+  renderOverviewRows();
+  renderOverviewStatusChart();
 }
 
 // Each stage now has its own primary nav tab and panel (instead of one
@@ -2551,9 +2614,15 @@ function bindEvents() {
   $("#overviewFilters").addEventListener("click", (event) => {
     const btn = event.target.closest("[data-overview-filter]");
     if (!btn) return;
-    overviewFilter = btn.dataset.overviewFilter;
-    $$("#overviewFilters .filter-tab").forEach((el) => el.classList.toggle("active", el === btn));
-    renderOverviewRows();
+    setOverviewFilter(btn.dataset.overviewFilter);
+  });
+
+  $("#overviewStatusLegend").addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-overview-filter]");
+    if (!btn) return;
+    // The legend has no "All" entry — clicking an already-active category
+    // clears the filter instead of being a no-op.
+    setOverviewFilter(overviewFilter === btn.dataset.overviewFilter ? "all" : btn.dataset.overviewFilter);
   });
 
   $("#fabricForm").addEventListener("input", updateFabricTotal);
