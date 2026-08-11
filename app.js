@@ -1418,27 +1418,88 @@ function renderCuttingRows() {
 // Set by the filter-tab click handler in bindEvents.
 let overviewFilter = "all";
 
+// Cutting-complete and finished-goods batches for the same SKU are usually
+// just the same style cut/finished in multiple runs — on Overview that reads
+// as noisy duplicate rows, so those two categories get collapsed into one
+// row per SKU with sizes summed together. WIP stays one row per batch,
+// since two WIP batches on the same SKU can be sitting at genuinely
+// different stages (one at Kaaj/Button, another at Handwork) and merging
+// them would hide that.
+function getOverviewDisplayRows(rows) {
+  const merged = new Map();
+  const passthrough = [];
+  rows.forEach((cutting) => {
+    const category = getOverviewCategory(cutting);
+    if (category === "wip") {
+      passthrough.push({ kind: "single", cutting, category, sortDate: cutting.entryDate || "" });
+      return;
+    }
+    const key = `${category}|${cutting.sku}`;
+    if (!merged.has(key)) {
+      merged.set(key, {
+        kind: "merged",
+        category,
+        sku: cutting.sku,
+        commonName: cutting.commonName,
+        garmentLabels: new Set(),
+        sizes: {},
+        batchCount: 0,
+        latestDate: ""
+      });
+    }
+    const group = merged.get(key);
+    group.batchCount += 1;
+    group.garmentLabels.add(garmentDisplayLabel(cutting));
+    Object.entries(cutting.sizes || {}).forEach(([size, qty]) => {
+      group.sizes[size] = (group.sizes[size] || 0) + toNumber(qty);
+    });
+    if ((cutting.entryDate || "") > group.latestDate) group.latestDate = cutting.entryDate || "";
+  });
+  const mergedRows = Array.from(merged.values()).map((group) => ({ ...group, sortDate: group.latestDate }));
+  return [...passthrough, ...mergedRows].sort((a, b) => (b.sortDate || "").localeCompare(a.sortDate || ""));
+}
+
 function renderOverviewRows() {
   const rows = state.cuttings.filter((cutting) =>
     overviewFilter === "all" || getOverviewCategory(cutting) === overviewFilter
   );
-  $("#overviewRows").innerHTML = rows.length
-    ? sortCuttingsRecent(rows).map((cutting) => {
-        const category = getOverviewCategory(cutting);
+  const displayRows = getOverviewDisplayRows(rows);
+  $("#overviewRows").innerHTML = displayRows.length
+    ? displayRows.map((row) => {
+        if (row.kind === "single") {
+          const cutting = row.cutting;
+          return `
+        <tr>
+          <td>${cutting.sku}</td>
+          <td>${cutting.commonName}</td>
+          <td>
+            <div>${escapeHtml(garmentDisplayLabel(cutting))}</div>
+            ${cutting.cutGroupId ? `<small class="set-badge">Set with ${escapeHtml(getSetSiblings(cutting).map(garmentDisplayLabel).join(", ") || "\u2014")}</small>` : ""}
+          </td>
+          <td class="num">
+            <div>${formatQty(getPieces(cutting.sizes))}</div>
+            <small class="size-breakdown">${formatSizeBreakdown(cutting.sizes) || "&mdash;"}</small>
+          </td>
+          <td><span class="stage-pill">${OVERVIEW_STATUS_LABELS[row.category]}</span></td>
+          <td><span class="code-pill">${escapeHtml(cutting.stage)}</span></td>
+        </tr>
+      `;
+        }
+        const pieces = getPieces(row.sizes);
         return `
       <tr>
-        <td>${cutting.sku}</td>
-        <td>${cutting.commonName}</td>
+        <td>${escapeHtml(row.sku)}</td>
+        <td>${escapeHtml(row.commonName)}</td>
         <td>
-          <div>${escapeHtml(garmentDisplayLabel(cutting))}</div>
-          ${cutting.cutGroupId ? `<small class="set-badge">Set with ${escapeHtml(getSetSiblings(cutting).map(garmentDisplayLabel).join(", ") || "\u2014")}</small>` : ""}
+          <div>${escapeHtml(Array.from(row.garmentLabels).join(", "))}</div>
+          ${row.batchCount > 1 ? `<small class="set-badge">${row.batchCount} batches merged</small>` : ""}
         </td>
         <td class="num">
-          <div>${formatQty(getPieces(cutting.sizes))}</div>
-          <small class="size-breakdown">${formatSizeBreakdown(cutting.sizes) || "&mdash;"}</small>
+          <div>${formatQty(pieces)}</div>
+          <small class="size-breakdown">${formatSizeBreakdown(row.sizes) || "&mdash;"}</small>
         </td>
-        <td><span class="stage-pill">${OVERVIEW_STATUS_LABELS[category]}</span></td>
-        <td>${category === "wip" ? `<span class="code-pill">${escapeHtml(cutting.stage)}</span>` : "&mdash;"}</td>
+        <td><span class="stage-pill">${OVERVIEW_STATUS_LABELS[row.category]}</span></td>
+        <td>&mdash;</td>
       </tr>
     `;
       }).join("")
