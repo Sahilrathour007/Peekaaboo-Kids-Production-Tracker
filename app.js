@@ -1030,6 +1030,7 @@ function splitBatch(cutting, splitSizes) {
 // coord sets/multi-fabric styles have two). Rebuilt whenever the
 // commonName/SKU field resolves to a match; read by renderEstimationRows.
 let estimationRequirements = [];
+let estimationGarmentRowSeq = 0;
 
 function buildEstimationRequirements(fabricRecord) {
   if (!fabricRecord) return [];
@@ -1058,6 +1059,63 @@ function totalAvailableFabricStock(name, printType, colour) {
   };
 }
 
+// Builds one "garment produced" row: a type select, an optional free-text
+// label, and a pieces count. Mirrors the Cutting form's garment rows, but
+// with a single pieces number per garment instead of a full size grid —
+// this tab is a planning estimate, not a batch record, so size-level
+// detail isn't needed to answer "how much fabric do I need".
+function addEstimationGarmentRow(type = "", label = "", pieces = "") {
+  const container = $("#estimationGarmentsContainer");
+  const id = `estimationGarmentRow${++estimationGarmentRowSeq}`;
+  const wrapper = document.createElement("div");
+  wrapper.className = "estimation-garment-row";
+  wrapper.dataset.rowId = id;
+  wrapper.innerHTML = `
+    <label>Garment type
+      <select data-role="garmentType">
+        ${GARMENT_TYPE_OPTIONS.map(([value, text]) => `<option value="${value}"${value === type ? " selected" : ""}>${text}</option>`).join("")}
+      </select>
+    </label>
+    <label>Label (optional)
+      <input data-role="garmentLabel" autocomplete="off" placeholder="e.g. Kurta" value="${escapeHtml(label)}">
+    </label>
+    <label>Pieces<span class="req">*</span>
+      <input data-role="garmentPieces" type="number" min="0" step="1" placeholder="40" value="${escapeHtml(String(pieces))}">
+    </label>
+    <button class="icon-button danger" type="button" data-remove-estimation-garment-row aria-label="Remove this garment" data-tooltip="Remove">
+      <i data-lucide="trash-2" aria-hidden="true"></i>
+    </button>
+  `;
+  container.appendChild(wrapper);
+  if (window.lucide) window.lucide.createIcons();
+  return wrapper;
+}
+
+function clearEstimationGarmentRows() {
+  $("#estimationGarmentsContainer").innerHTML = "";
+}
+
+function readEstimationGarmentRows() {
+  return $$(".estimation-garment-row").map((row) => ({
+    type: row.querySelector('[data-role="garmentType"]').value,
+    label: row.querySelector('[data-role="garmentLabel"]').value.trim(),
+    pieces: toNumber(row.querySelector('[data-role="garmentPieces"]').value)
+  }));
+}
+
+// Same "set" logic as the Cutting form's getSetPieces: a shared fabric
+// roll's avg-used figure already covers the whole set (e.g. Kurta + Pant
+// cut together), so the pieces used to multiply it is the LARGEST garment
+// row's count, not the sum of every garment — summing would double-count
+// the same roll once per garment in the set.
+function getEstimationSetPieces(garmentRows) {
+  return garmentRows.reduce((max, row) => Math.max(max, row.pieces), 0);
+}
+
+function labelEstimationGarment(row) {
+  return row.label || GARMENT_TYPE_OPTIONS.find(([value]) => value === row.type)?.[1] || row.type;
+}
+
 function renderEstimationRows() {
   const container = $("#estimationComponentsContainer");
   if (!estimationRequirements.length) {
@@ -1084,13 +1142,14 @@ function renderEstimationRows() {
   updateEstimationCalc();
 }
 
-// Recomputes needed/available/status for every rendered row from the
-// current pieces + avg-used inputs. Pure read of the DOM + state.fabrics —
-// nothing here is saved, so this is safe to call on every keystroke and
-// after any state change elsewhere (receiving fabric, cutting, etc.).
+// Recomputes needed/available/status for every rendered fabric row from the
+// current garment-row pieces + avg-used inputs. Pure read of the DOM +
+// state.fabrics — nothing here is saved, so this is safe to call on every
+// keystroke and after any state change elsewhere (receiving fabric,
+// cutting, etc.).
 function updateEstimationCalc() {
-  const form = $("#estimationForm");
-  const pieces = toNumber(form.pieces.value);
+  const garmentRows = readEstimationGarmentRows();
+  const pieces = getEstimationSetPieces(garmentRows);
   let totalNeeded = 0;
   let anyRows = false;
   let anyMissingInput = false;
@@ -1129,6 +1188,13 @@ function updateEstimationCalc() {
     }
   });
 
+  const piecesSummaryEl = $("#estimationPiecesSummary");
+  const namedRows = garmentRows.filter((row) => row.pieces > 0);
+  piecesSummaryEl.textContent = namedRows.length
+    ? namedRows.map((row) => `${labelEstimationGarment(row)} \u00d7${formatQty(row.pieces)}`).join(", ") +
+      (garmentRows.length > 1 ? ` (as a set of ${formatQty(pieces)})` : "")
+    : "\u2014";
+
   $("#estimationTotalNeeded").textContent = formatMeters(totalNeeded);
   const verdictEl = $("#estimationVerdict");
   if (!anyRows) {
@@ -1146,11 +1212,28 @@ function updateEstimationCalc() {
   }
 }
 
+// Guesses a garment type from the SKU's text the same way the Cutting
+// form's applySkuToForm does, and only touches the row if there's a
+// single, still-default garment row — once someone's added a second row
+// or renamed the first, a new SKU match shouldn't clobber their setup.
+function guessEstimationGarmentType(skuRecord) {
+  const rows = $$(".estimation-garment-row");
+  if (rows.length !== 1) return;
+  const skuText = `${skuRecord.commonName} ${skuRecord.sku}`.toLowerCase();
+  let guessedType = "";
+  if (skuText.includes("kurta")) guessedType = "kurta";
+  else if (skuText.includes("pant")) guessedType = "pant";
+  else if (skuText.includes("shirt") || skuText.includes("top")) guessedType = "shirt";
+  else if (skuText.includes("dress")) guessedType = "dress";
+  if (guessedType) rows[0].querySelector('[data-role="garmentType"]').value = guessedType;
+}
+
 function applySkuToEstimationForm(skuRecord) {
   const form = $("#estimationForm");
   if (skuRecord) {
     form.sku.value = skuRecord.sku;
     form.commonName.value = skuRecord.commonName;
+    guessEstimationGarmentType(skuRecord);
   }
   const fabricRecord = findFabricBySku(skuRecord?.sku);
   estimationRequirements = buildEstimationRequirements(fabricRecord);
@@ -3020,6 +3103,7 @@ function bindEvents() {
 
   addFabricComponentRow();
   addGarmentComponentRow();
+  addEstimationGarmentRow();
 
   $("#cuttingForm").commonName.addEventListener("change", (event) => {
     applySkuToForm(event.currentTarget.form, findSkuByCommonName(event.target.value));
@@ -3040,7 +3124,31 @@ function bindEvents() {
   });
 
   $("#estimationForm").addEventListener("input", (event) => {
-    if (event.target.name === "pieces" || event.target.dataset.role === "avgUsed") updateEstimationCalc();
+    if (
+      event.target.dataset.role === "avgUsed" ||
+      event.target.dataset.role === "garmentPieces" ||
+      event.target.dataset.role === "garmentType" ||
+      event.target.dataset.role === "garmentLabel"
+    ) {
+      updateEstimationCalc();
+    }
+  });
+
+  $("#addEstimationGarmentRowBtn").addEventListener("click", () => {
+    addEstimationGarmentRow();
+    if (window.lucide) window.lucide.createIcons();
+    updateEstimationCalc();
+  });
+
+  $("#estimationGarmentsContainer").addEventListener("click", (event) => {
+    const removeBtn = event.target.closest("[data-remove-estimation-garment-row]");
+    if (!removeBtn) return;
+    if ($$(".estimation-garment-row").length <= 1) {
+      alert("Add at least one garment to estimate against.");
+      return;
+    }
+    removeBtn.closest(".estimation-garment-row").remove();
+    updateEstimationCalc();
   });
 
   // No submit button (this tab only calculates, never saves) — but a form

@@ -656,6 +656,58 @@ main {
   }
 }
 
+.estimation-garment-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 0.7fr auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 10px;
+}
+
+.estimation-garment-row:last-child {
+  margin-bottom: 0;
+}
+
+.estimation-garment-row label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 650;
+  color: #344054;
+}
+
+.estimation-garment-row .icon-button {
+  align-self: center;
+}
+
+.estimation-garment-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr 0.7fr auto;
+  gap: 10px;
+  margin-bottom: 6px;
+  padding: 0 2px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+@media (max-width: 780px) {
+  .estimation-garment-legend {
+    display: none;
+  }
+
+  .estimation-garment-row {
+    grid-template-columns: 1fr 1fr auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .estimation-garment-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .estimation-row {
   align-items: center;
 }

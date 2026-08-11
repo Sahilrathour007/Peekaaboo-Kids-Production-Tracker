@@ -301,14 +301,13 @@
       <div class="section-heading">
         <div>
           <h2>Fabric estimation</h2>
-          <p>Pick a common name or SKU and how many pieces you want to produce &mdash; see the fabric needed for each roll it uses (styles cut from two fabrics get a row each) and whether current stock covers it.</p>
+          <p>Pick a common name or SKU and how many pieces of each garment you want to produce &mdash; see the fabric needed for each roll it uses (styles cut from two fabrics get a row each) and whether current stock covers it.</p>
         </div>
       </div>
       <form class="cutting-layout" id="estimationForm">
         <div class="form-grid compact">
           <label>Common name <input name="commonName" autocomplete="off" placeholder="Pathan Boys kurta jacket set - blue"></label>
           <label>SKU code <input name="sku" autocomplete="off" placeholder="56C74BSlCaSoLeRBRe"></label>
-          <label>Pieces to produce<span class="req">*</span> <input name="pieces" type="number" min="1" step="1" placeholder="40"></label>
         </div>
         <div class="fabric-components-section">
           <div class="fabric-components-header">
@@ -325,7 +324,24 @@
             <p class="estimation-empty">Pick a common name or SKU above to load its fabric requirement(s).</p>
           </div>
         </div>
+        <div class="fabric-components-section" id="estimationGarmentsSection">
+          <div class="fabric-components-header">
+            <span>Garments produced<span class="req">*</span> <small>Add a row per garment you want to produce (e.g. Kurta + Pant cut as a set). For a set cut from a shared roll, the fabric average above already covers the whole set &mdash; it's applied once per set, not once per garment.</small></span>
+            <button class="secondary-action" type="button" id="addEstimationGarmentRowBtn">
+              <i data-lucide="plus" aria-hidden="true"></i>
+              Add garment
+            </button>
+          </div>
+          <div class="estimation-garment-legend" aria-hidden="true">
+            <span>Garment type</span>
+            <span>Label (optional)</span>
+            <span>Pieces<span class="req">*</span></span>
+            <span></span>
+          </div>
+          <div id="estimationGarmentsContainer"></div>
+        </div>
         <div class="calculation-strip" id="estimationSummary">
+          <span>Producing: <strong id="estimationPiecesSummary">&mdash;</strong></span>
           <span>Total fabric needed: <strong id="estimationTotalNeeded">0 m</strong></span>
           <span>Can we fulfill it? <strong id="estimationVerdict">Pick a SKU to begin</strong></span>
         </div>
