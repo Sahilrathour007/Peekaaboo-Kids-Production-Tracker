@@ -210,6 +210,24 @@
         </div>
         <div class="status-chart-legend" id="overviewStatusLegend" role="group" aria-label="Filter by status"></div>
       </div>
+      <div class="fabric-summary-card" id="fabricSummaryCard">
+        <div class="fabric-summary-header">
+          <div>
+            <h3>Fabric inventory summary</h3>
+            <p>Every receipt merged by fabric &middot; print &middot; colour, so the same fabric bought on different dates or as separate rolls shows as one running total.</p>
+          </div>
+          <div class="fabric-summary-stats">
+            <div><span>Total received</span><strong id="fabricSummaryTotalStock">0 m</strong></div>
+            <div><span>Consumed</span><strong id="fabricSummaryTotalConsumed">0 m</strong></div>
+            <div><span>Remaining</span><strong id="fabricSummaryTotalRemaining">0 m</strong></div>
+          </div>
+        </div>
+        <div class="fabric-bar-legend">
+          <span><i class="fabric-bar-swatch consumed"></i> Consumed</span>
+          <span><i class="fabric-bar-swatch remaining"></i> Remaining</span>
+        </div>
+        <div class="fabric-bar-list" id="fabricSummaryChart"></div>
+      </div>
       <div class="filter-tabs" id="overviewFilters" role="group" aria-label="Filter by status">
         <button class="filter-tab active" type="button" data-overview-filter="all">All</button>
         <button class="filter-tab" type="button" data-overview-filter="cutting-schedule">Cutting complete</button>

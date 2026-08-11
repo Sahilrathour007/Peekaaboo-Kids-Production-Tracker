@@ -1223,6 +1223,7 @@ function getCuttingCalculation() {
 function renderAll() {
   renderOverviewRows();
   renderOverviewStatusChart();
+  renderFabricSummary();
   renderFabricRows();
   renderCuttingRows();
   renderStagePanels();
@@ -1263,6 +1264,83 @@ function renderStats() {
   $("#accessoryDue").textContent = formatQty(accessories);
   $("#outsourcingAmount").textContent = formatMoney(outsourcingAmount);
   $("#finishedGoodsPieces").textContent = formatQty(finishedGoodsPieces);
+}
+
+// Merges every fabric receipt that shares the same fabric name / print type
+// / colour (case- and whitespace-insensitive) into one running total, so
+// two rolls of "Foil Holland / Floral / Pink" bought on different dates
+// show up as a single line instead of two. Sums totalLength/consumed/rolls
+// across the group; remaining is derived the same way getAvailableFabric
+// does per-fabric, just at the group level.
+function getFabricGroups() {
+  const groups = new Map();
+  state.fabrics.forEach((fabric) => {
+    const key = [fabric.name, fabric.printType, fabric.colour]
+      .map((v) => (v || "").trim().toLowerCase())
+      .join("|");
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        name: fabric.name,
+        printType: fabric.printType,
+        colour: fabric.colour,
+        codes: [],
+        rolls: 0,
+        totalLength: 0,
+        consumed: 0
+      });
+    }
+    const group = groups.get(key);
+    group.codes.push(fabric.code);
+    group.rolls += toNumber(fabric.rolls);
+    group.totalLength += toNumber(fabric.totalLength);
+    group.consumed += toNumber(fabric.consumed);
+  });
+  return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      remaining: Math.max(0, group.totalLength - group.consumed)
+    }))
+    .sort((a, b) => b.totalLength - a.totalLength);
+}
+
+// Drives the "Fabric inventory summary" card on Overview: three running
+// totals (received / consumed / remaining) plus a stacked bar per merged
+// fabric group so it's obvious at a glance which fabrics are running low.
+function renderFabricSummary() {
+  const groups = getFabricGroups();
+  const totalStock = groups.reduce((sum, g) => sum + g.totalLength, 0);
+  const totalConsumed = groups.reduce((sum, g) => sum + g.consumed, 0);
+  const totalRemaining = groups.reduce((sum, g) => sum + g.remaining, 0);
+
+  const stockEl = $("#fabricSummaryTotalStock");
+  const consumedEl = $("#fabricSummaryTotalConsumed");
+  const remainingEl = $("#fabricSummaryTotalRemaining");
+  if (stockEl) stockEl.textContent = formatMeters(totalStock);
+  if (consumedEl) consumedEl.textContent = formatMeters(totalConsumed);
+  if (remainingEl) remainingEl.textContent = formatMeters(totalRemaining);
+
+  const chart = $("#fabricSummaryChart");
+  if (!chart) return;
+  chart.innerHTML = groups.length
+    ? groups.map((group) => {
+        const consumedPct = group.totalLength > 0 ? Math.min(100, (group.consumed / group.totalLength) * 100) : 0;
+        const remainingPct = Math.max(0, 100 - consumedPct);
+        const label = [group.name, group.printType, group.colour].filter(Boolean).join(" / ");
+        return `
+          <div class="fabric-bar-item">
+            <div class="fabric-bar-label">
+              <span class="fabric-bar-name">${escapeHtml(label)}${group.codes.length > 1 ? ` <small class="size-breakdown">(${group.codes.length} rolls merged)</small>` : ""}</span>
+              <span class="fabric-bar-value">${formatMeters(group.remaining)} left of ${formatMeters(group.totalLength)}</span>
+            </div>
+            <div class="fabric-bar-track">
+              <div class="fabric-bar-consumed" style="width:${consumedPct}%"></div>
+              <div class="fabric-bar-remaining" style="width:${remainingPct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join("")
+    : '<p class="empty">No fabric received yet.</p>';
 }
 
 function renderFabricRows() {
