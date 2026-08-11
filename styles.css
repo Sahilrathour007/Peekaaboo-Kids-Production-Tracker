@@ -276,6 +276,48 @@ main {
   display: block;
 }
 
+.sub-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sub-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 4px;
+  margin-right: 22px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted, #6b7280);
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.sub-tab i {
+  width: 15px;
+  height: 15px;
+}
+
+.sub-tab.active {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+.overview-subview {
+  display: none;
+}
+
+.overview-subview.active {
+  display: block;
+}
+
 .filter-tabs {
   display: flex;
   align-items: center;

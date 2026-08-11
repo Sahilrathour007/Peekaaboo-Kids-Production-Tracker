@@ -204,54 +204,70 @@
           <p>Every cutting batch by SKU and common name, with size-wise quantity and where it currently stands. Batches move between these automatically as you advance them through the stage tabs &mdash; freshly cut sits in "Cutting complete", anything past that and before Finished Goods counts as WIP (with its exact stage shown), and completed batches land in "Finished goods".</p>
         </div>
       </div>
-      <div class="status-chart-card" id="overviewStatusCard">
-        <div class="status-chart-donut">
-          <svg viewBox="0 0 120 120" width="120" height="120" id="overviewDonut" role="img" aria-label="Production status breakdown by pieces"></svg>
-          <div class="status-chart-donut-center">
-            <strong id="overviewDonutTotal">0</strong>
-            <span>pieces</span>
-          </div>
-        </div>
-        <div class="status-chart-legend" id="overviewStatusLegend" role="group" aria-label="Filter by status"></div>
+      <div class="sub-tabs" id="overviewSubTabs" role="group" aria-label="Overview views">
+        <button class="sub-tab active" type="button" data-overview-view="status">
+          <i data-lucide="pie-chart" aria-hidden="true"></i>
+          Status
+        </button>
+        <button class="sub-tab" type="button" data-overview-view="fabric">
+          <i data-lucide="layers" aria-hidden="true"></i>
+          Fabric inventory summary
+        </button>
       </div>
-      <div class="fabric-summary-card" id="fabricSummaryCard">
-        <div class="fabric-summary-header">
-          <div>
-            <h3>Fabric inventory summary</h3>
-            <p>Every receipt merged by fabric &middot; print &middot; colour, so the same fabric bought on different dates or as separate rolls shows as one running total.</p>
+
+      <div class="overview-subview active" id="overviewStatusView">
+        <div class="status-chart-card" id="overviewStatusCard">
+          <div class="status-chart-donut">
+            <svg viewBox="0 0 120 120" width="120" height="120" id="overviewDonut" role="img" aria-label="Production status breakdown by pieces"></svg>
+            <div class="status-chart-donut-center">
+              <strong id="overviewDonutTotal">0</strong>
+              <span>pieces</span>
+            </div>
           </div>
-          <div class="fabric-summary-stats">
-            <div><span>Total received</span><strong id="fabricSummaryTotalStock">0 m</strong></div>
-            <div><span>Consumed</span><strong id="fabricSummaryTotalConsumed">0 m</strong></div>
-            <div><span>Remaining</span><strong id="fabricSummaryTotalRemaining">0 m</strong></div>
+          <div class="status-chart-legend" id="overviewStatusLegend" role="group" aria-label="Filter by status"></div>
+        </div>
+        <div class="filter-tabs" id="overviewFilters" role="group" aria-label="Filter by status">
+          <button class="filter-tab active" type="button" data-overview-filter="all">All</button>
+          <button class="filter-tab" type="button" data-overview-filter="cutting-schedule">Cutting complete</button>
+          <button class="filter-tab" type="button" data-overview-filter="wip">WIP</button>
+          <button class="filter-tab" type="button" data-overview-filter="finished-goods">Finished goods</button>
+        </div>
+        <div class="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Common name</th>
+                <th>Garment</th>
+                <th class="num">Pieces</th>
+                <th>Status</th>
+                <th>Current stage</th>
+              </tr>
+            </thead>
+            <tbody id="overviewRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="overview-subview" id="overviewFabricView">
+        <div class="fabric-summary-card" id="fabricSummaryCard">
+          <div class="fabric-summary-header">
+            <div>
+              <h3>Fabric inventory summary</h3>
+              <p>Every receipt merged by fabric &middot; print &middot; colour, so the same fabric bought on different dates or as separate rolls shows as one running total.</p>
+            </div>
+            <div class="fabric-summary-stats">
+              <div><span>Total received</span><strong id="fabricSummaryTotalStock">0 m</strong></div>
+              <div><span>Consumed</span><strong id="fabricSummaryTotalConsumed">0 m</strong></div>
+              <div><span>Remaining</span><strong id="fabricSummaryTotalRemaining">0 m</strong></div>
+            </div>
           </div>
+          <div class="fabric-bar-legend">
+            <span><i class="fabric-bar-swatch consumed"></i> Consumed</span>
+            <span><i class="fabric-bar-swatch remaining"></i> Remaining</span>
+          </div>
+          <div class="fabric-bar-list" id="fabricSummaryChart"></div>
         </div>
-        <div class="fabric-bar-legend">
-          <span><i class="fabric-bar-swatch consumed"></i> Consumed</span>
-          <span><i class="fabric-bar-swatch remaining"></i> Remaining</span>
-        </div>
-        <div class="fabric-bar-list" id="fabricSummaryChart"></div>
-      </div>
-      <div class="filter-tabs" id="overviewFilters" role="group" aria-label="Filter by status">
-        <button class="filter-tab active" type="button" data-overview-filter="all">All</button>
-        <button class="filter-tab" type="button" data-overview-filter="cutting-schedule">Cutting complete</button>
-        <button class="filter-tab" type="button" data-overview-filter="wip">WIP</button>
-        <button class="filter-tab" type="button" data-overview-filter="finished-goods">Finished goods</button>
-      </div>
-      <div class="table-shell">
-        <table>
-          <thead>
-            <tr>
-              <th>SKU</th>
-              <th>Common name</th>
-              <th>Garment</th>
-              <th class="num">Pieces</th>
-              <th>Status</th>
-              <th>Current stage</th>
-            </tr>
-          </thead>
-          <tbody id="overviewRows"></tbody>
-        </table>
       </div>
     </section>
 

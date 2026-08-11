@@ -2946,9 +2946,20 @@ function switchTab(tabName) {
   $$(".tab-panel").forEach((panel) => panel.classList.toggle("active", panel.id === `${tabName}Panel`));
 }
 
+function switchOverviewView(viewName) {
+  $$("#overviewSubTabs .sub-tab").forEach((btn) => btn.classList.toggle("active", btn.dataset.overviewView === viewName));
+  $$(".overview-subview").forEach((view) => view.classList.toggle("active", view.id === `overview${viewName === "status" ? "Status" : "Fabric"}View`));
+}
+
 function bindEvents() {
   $$(".tab").forEach((tab) => {
     tab.addEventListener("click", () => switchTab(tab.dataset.tab));
+  });
+
+  $("#overviewSubTabs").addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-overview-view]");
+    if (!btn) return;
+    switchOverviewView(btn.dataset.overviewView);
   });
 
   $("#overviewFilters").addEventListener("click", (event) => {
