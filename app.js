@@ -443,7 +443,11 @@ function mapOutsourcingToSupabaseRow(entry) {
     vendor_name: entry.vendorName,
     sku: entry.sku,
     common_name: entry.commonName,
-    rate: toNumber(entry.rate),
+    // rate/amount tracking was removed from the app entirely (form, tables,
+    // receipts, receipt PDF, stats). Still sending 0 here rather than
+    // dropping the column, since the Supabase table may have this as
+    // NOT NULL and there's no way to confirm/alter that schema from here.
+    rate: 0,
     delivery_date: entry.deliveryDate || todayDate(),
     pending_delivery_date: entry.pendingDeliveryDate || null,
     created_at: entry.createdAt || new Date().toISOString()
@@ -475,7 +479,10 @@ function mapOutsourcingReceipts(entry) {
       outsourcing_id: entry.id,
       qty: toNumber(receipt.qty),
       received_date: receipt.date || todayDate(),
-      amount_paid: toNumber(receipt.amountPaid)
+      // Same reasoning as rate above — amount_paid is no longer collected
+      // anywhere in the app, but kept at 0 here in case the column is
+      // NOT NULL on the Supabase side.
+      amount_paid: 0
     }))
     .filter((row) => row.id && row.qty > 0);
 }
@@ -1048,10 +1055,6 @@ function getAccessoryUse(cutting) {
   };
 }
 
-function getOutsourcingTotal(entry) {
-  return getPieces(entry.sizes) * toNumber(entry.rate);
-}
-
 // --- Incoming material (receipts logged back against an outsourcing entry) ---
 
 function getOutsourcingReceivedQty(entry) {
@@ -1060,14 +1063,6 @@ function getOutsourcingReceivedQty(entry) {
 
 function getOutsourcingPendingQty(entry) {
   return Math.max(0, getPieces(entry.sizes) - getOutsourcingReceivedQty(entry));
-}
-
-function getOutsourcingAmountPaid(entry) {
-  return (entry.receipts || []).reduce((sum, receipt) => sum + toNumber(receipt.amountPaid), 0);
-}
-
-function getOutsourcingAmountLeft(entry) {
-  return getOutsourcingTotal(entry) - getOutsourcingAmountPaid(entry);
 }
 
 function isOutsourcingFullyReceived(entry) {
@@ -1253,7 +1248,7 @@ function renderStats() {
       const use = getAccessoryUse(cutting);
       return sum + use.elastic + use.button + use.tag;
     }, 0);
-  const outsourcingAmount = state.outsourcing.reduce((sum, entry) => sum + getOutsourcingTotal(entry), 0);
+  const outsourcingPending = state.outsourcing.reduce((sum, entry) => sum + getOutsourcingPendingQty(entry), 0);
   const finishedGoodsPieces = state.cuttings
     .filter((cutting) => cutting.stage === "Finished Goods")
     .reduce((sum, cutting) => sum + getPieces(cutting.sizes), 0);
@@ -1262,7 +1257,7 @@ function renderStats() {
   $("#cutPieces").textContent = formatQty(pieces);
   $("#openBatches").textContent = formatQty(open);
   $("#accessoryDue").textContent = formatQty(accessories);
-  $("#outsourcingAmount").textContent = formatMoney(outsourcingAmount);
+  $("#outsourcingPending").textContent = formatQty(outsourcingPending);
   $("#finishedGoodsPieces").textContent = formatQty(finishedGoodsPieces);
 }
 
@@ -1794,8 +1789,6 @@ function renderOutsourcingRows() {
           <div>${formatQty(getPieces(entry.sizes))}</div>
           <small class="size-breakdown">${formatSizeBreakdown(entry.sizes) || "&mdash;"}</small>
         </td>
-        <td class="num">${formatMoney(entry.rate)}</td>
-        <td class="num">${formatMoney(getOutsourcingTotal(entry))}</td>
         <td>${entry.deliveryDate}</td>
         <td>${formatAccessories(entry.accessories)}</td>
         <td class="num">
@@ -1808,7 +1801,7 @@ function renderOutsourcingRows() {
         </td>
       </tr>
     `).join("")
-    : emptyRow(10);
+    : emptyRow(8);
 }
 
 // Fill these in once with your real business details — they're reused on
@@ -1830,9 +1823,6 @@ const COMPANY_INFO = {
 function openOutsourcingReceipt(entry) {
   const index = state.outsourcing.findIndex((item) => item.id === entry.id);
   const receiptNo = `OUT-${String(index + 1).padStart(4, "0")}`;
-  const total = getOutsourcingTotal(entry);
-  const paid = getOutsourcingAmountPaid(entry);
-  const balance = getOutsourcingAmountLeft(entry);
 
   const sizeRows = SIZES
     .filter(([name]) => toNumber(entry.sizes?.[name]) > 0)
@@ -1934,25 +1924,17 @@ function openOutsourcingReceipt(entry) {
 
   <table>
     <thead>
-      <tr><th>Description</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr>
+      <tr><th>Description</th><th class="num">Qty</th></tr>
     </thead>
     <tbody>
       <tr>
         <td>${escapeHtml(entry.workType)} &mdash; ${escapeHtml(entry.commonName)}</td>
         <td class="num">${formatQty(getPieces(entry.sizes))}</td>
-        <td class="num">${formatMoney(entry.rate)}</td>
-        <td class="num">${formatMoney(total)}</td>
       </tr>
       <tr>
-        <td colspan="4">Accessories supplied: ${escapeHtml(formatAccessories(entry.accessories))}</td>
+        <td colspan="2">Accessories supplied: ${escapeHtml(formatAccessories(entry.accessories))}</td>
       </tr>
     </tbody>
-  </table>
-
-  <table class="totals">
-    <tr><td>Total amount</td><td class="num">${formatMoney(total)}</td></tr>
-    <tr><td>Paid</td><td class="num">${formatMoney(paid)}</td></tr>
-    <tr class="grand"><td>Balance due</td><td class="num">${formatMoney(balance)}</td></tr>
   </table>
 
   <div class="signatures">
@@ -1997,9 +1979,6 @@ function renderIncomingMaterialRows() {
           ${formatReceiptHistory(entry)}
         </td>
         <td class="num">${fullyReceived ? '<span class="code-pill">Fully received</span>' : formatQty(getOutsourcingPendingQty(entry))}</td>
-        <td class="num">${formatMoney(getOutsourcingTotal(entry))}</td>
-        <td class="num">${formatMoney(getOutsourcingAmountPaid(entry))}</td>
-        <td class="num">${formatMoney(getOutsourcingAmountLeft(entry))}</td>
         <td>${fullyReceived ? "&mdash;" : formatDate(entry.pendingDeliveryDate || entry.deliveryDate)}</td>
         <td class="num">
           <button class="secondary-action" type="button" data-log-receipt="${entry.id}" ${fullyReceived ? "disabled" : ""}>
@@ -2009,7 +1988,7 @@ function renderIncomingMaterialRows() {
       </tr>
     `;
       }).join("")
-    : emptyRow(12);
+    : emptyRow(9);
 }
 
 // "Log receipt" dialog: records one incoming delivery against an
@@ -2052,21 +2031,18 @@ function applyReceiveEntryToDialog(entry) {
     $("#receiveQty").value = 0;
     $("#receiveQty").max = 0;
     $("#receiveQtyMax").textContent = "";
-    $("#receiveAmountLeftHint").textContent = "";
     $("#receivePendingDate").value = "";
     $("#receiveTotal").textContent = "";
     return;
   }
   receiveTarget = entry.id;
   const pending = getOutsourcingPendingQty(entry);
-  const amountLeft = getOutsourcingAmountLeft(entry);
   $("#receiveSubtitle").textContent =
     `${entry.commonName} \u2014 ${entry.vendorName} \u00b7 ${formatQty(pending)} of ${formatQty(getPieces(entry.sizes))} pieces still pending`;
   const qtyInput = $("#receiveQty");
   qtyInput.value = pending;
   qtyInput.max = pending;
   $("#receiveQtyMax").textContent = `of ${formatQty(pending)} pending`;
-  $("#receiveAmountLeftHint").textContent = `${formatMoney(amountLeft)} left on this entry`;
   $("#receivePendingDate").value = entry.pendingDeliveryDate || entry.deliveryDate;
   updateReceiveTotal();
 }
@@ -2080,7 +2056,6 @@ function openReceiveDialog(entry) {
   const selectedId = $("#receiveEntrySelect").value;
   const selectedEntry = state.outsourcing.find((item) => item.id === selectedId) || null;
   $("#receiveDate").value = todayDate();
-  $("#receiveAmountPaid").value = 0;
   applyReceiveEntryToDialog(selectedEntry);
   if (!selectedEntry) {
     alert("No pending outsourcing entries to receive against.");
@@ -2132,8 +2107,7 @@ function submitReceipt() {
   entry.receipts.push({
     id: crypto.randomUUID(),
     qty,
-    date,
-    amountPaid: toNumber($("#receiveAmountPaid").value)
+    date
   });
   const stillPending = pending - qty;
   entry.pendingDeliveryDate = stillPending > 0
@@ -2487,11 +2461,8 @@ function updateOutsourcingPreview() {
   const form = $("#outsourcingForm");
   const sizes = Object.fromEntries(SIZES.map(([name]) => [name, toNumber(form[name].value)]));
   const quantity = getPieces(sizes);
-  const total = quantity * toNumber(form.rate.value);
-  form.totalAmount.value = total;
   $("#outsourcingPreview").innerHTML = `
     <span>Total quantity: <strong>${formatQty(quantity)}</strong></span>
-    <span>Total amount: <strong>${formatMoney(total)}</strong></span>
   `;
 }
 
@@ -3135,7 +3106,6 @@ function bindEvents() {
       commonName: form.commonName.value.trim(),
       sourceCuttingId,
       sizes,
-      rate: toNumber(form.rate.value),
       deliveryDate: form.deliveryDate.value,
       pendingDeliveryDate: form.deliveryDate.value,
       receipts: [],

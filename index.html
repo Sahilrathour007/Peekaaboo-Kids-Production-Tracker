@@ -133,8 +133,8 @@
         <strong id="accessoryDue">0</strong>
       </article>
       <article class="stat">
-        <span>Outsourcing amount</span>
-        <strong id="outsourcingAmount">0</strong>
+        <span>Pieces with vendors</span>
+        <strong id="outsourcingPending">0</strong>
       </article>
       <article class="stat">
         <span>Finished goods (pieces)</span>
@@ -447,7 +447,7 @@
       <div class="section-heading">
         <div>
           <h2>Outsourcing</h2>
-          <p>Record vendor work for stitching, Kaaj/Button, and handwork with size-wise quantity, rate, delivery date, and accessories.</p>
+          <p>Record vendor work for stitching, Kaaj/Button, and handwork with size-wise quantity, delivery date, and accessories.</p>
         </div>
       </div>
       <div class="fabric-components-section">
@@ -473,8 +473,6 @@
           <label>Vendor name<span class="req">*</span> <input required name="vendorName" autocomplete="off" placeholder="Vendor name"></label>
           <label>Common name<span class="req">*</span> <input required name="commonName" autocomplete="off" placeholder="London Pink"></label>
           <label>SKU code<span class="req">*</span> <input required name="sku" autocomplete="off" placeholder="19DoFoLoSoI"></label>
-          <label>Rate<span class="req">*</span> <input required name="rate" type="number" min="0" step="0.01" placeholder="25"></label>
-          <label>Total amount <input required readonly name="totalAmount" type="number" min="0" step="0.01" placeholder="0"></label>
           <label>Delivery date<span class="req">*</span> <input required name="deliveryDate" type="date"></label>
         </div>
         <fieldset class="size-grid">
@@ -496,7 +494,6 @@
         </fieldset>
         <div class="calculation-strip" id="outsourcingPreview">
           <span>Total quantity: <strong>0</strong></span>
-          <span>Total amount: <strong>0</strong></span>
         </div>
         <button class="primary-action" type="submit">
           <i data-lucide="plus" aria-hidden="true"></i>
@@ -512,8 +509,6 @@
               <th>SKU</th>
               <th>Name</th>
               <th class="num">Qty</th>
-              <th class="num">Rate</th>
-              <th class="num">Amount</th>
               <th>Delivery</th>
               <th>Accessories</th>
               <th></th>
@@ -528,7 +523,7 @@
       <div class="section-heading">
         <div>
           <h2>Incoming outsourcing material</h2>
-          <p>Log what comes back from vendors for stitching, Kaaj/Button, and handwork — partial or full — and track pending quantity, balance amount, and the revised delivery date for whatever's still out.</p>
+          <p>Log what comes back from vendors for stitching, Kaaj/Button, and handwork &mdash; partial or full &mdash; and track pending quantity and the revised delivery date for whatever's still out.</p>
         </div>
         <button class="primary-action" type="button" id="addReceiptBtn">
           <i data-lucide="plus" aria-hidden="true"></i>
@@ -546,9 +541,6 @@
               <th class="num">Sent</th>
               <th class="num">Received</th>
               <th class="num">Pending qty</th>
-              <th class="num">Amount</th>
-              <th class="num">Paid</th>
-              <th class="num">Amount left</th>
               <th>Pending delivery</th>
               <th></th>
             </tr>
@@ -679,10 +671,6 @@
         </label>
         <label>Date received<span class="req">*</span>
           <input required id="receiveDate" type="date">
-        </label>
-        <label>Amount paid<span class="req">*</span>
-          <input required id="receiveAmountPaid" type="number" min="0" step="0.01" value="0">
-          <small id="receiveAmountLeftHint"></small>
         </label>
         <label>Pending delivery date
           <input id="receivePendingDate" type="date">
