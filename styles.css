@@ -7,6 +7,12 @@
   --soft: #f6f7f9;
   --accent: #006d77;
   --accent-2: #8f5f00;
+  /* Dedicated to the fabric consumed/remaining bars: old accent pair (dark
+     amber vs dark teal) sit too close in lightness to read apart at a
+     glance. This pair keeps hue contrast (red/orange vs green) AND a real
+     lightness gap, so it holds up for colour-blind and low-contrast cases. */
+  --fabric-consumed: #c1440e;
+  --fabric-remaining: #2f9e5c;
   --entry: #6941c6;
   --entry-soft: #f4f0ff;
   --danger: #b42318;
@@ -471,11 +477,11 @@ main {
 }
 
 .fabric-bar-swatch.consumed {
-  background: var(--accent-2);
+  background: var(--fabric-consumed);
 }
 
 .fabric-bar-swatch.remaining {
-  background: var(--accent);
+  background: var(--fabric-remaining);
 }
 
 .fabric-bar-list {
@@ -522,13 +528,17 @@ main {
 }
 
 .fabric-bar-consumed {
-  background: var(--accent-2);
+  background: var(--fabric-consumed);
   height: 100%;
 }
 
 .fabric-bar-remaining {
-  background: var(--accent);
+  background: var(--fabric-remaining);
   height: 100%;
+}
+
+.fabric-bar-consumed + .fabric-bar-remaining {
+  border-left: 1px solid var(--surface, #fff);
 }
 
 .status-legend-value small {
