@@ -396,6 +396,141 @@ main {
   gap: 6px;
 }
 
+.fabric-summary-card {
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.fabric-summary-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.fabric-summary-header h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.fabric-summary-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  max-width: 46ch;
+}
+
+.fabric-summary-stats {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+
+.fabric-summary-stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fabric-summary-stats span {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.fabric-summary-stats strong {
+  font-size: 18px;
+}
+
+.fabric-bar-legend {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.fabric-bar-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fabric-bar-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.fabric-bar-swatch.consumed {
+  background: var(--accent-2);
+}
+
+.fabric-bar-swatch.remaining {
+  background: var(--accent);
+}
+
+.fabric-bar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.fabric-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.fabric-bar-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.fabric-bar-label .fabric-bar-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.fabric-bar-label .fabric-bar-value {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.fabric-bar-track {
+  display: flex;
+  height: 10px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--soft, #eef1f5);
+  border: 1px solid var(--line);
+}
+
+.fabric-bar-consumed {
+  background: var(--accent-2);
+  height: 100%;
+}
+
+.fabric-bar-remaining {
+  background: var(--accent);
+  height: 100%;
+}
+
 .status-legend-value small {
   font-size: 11.5px;
   font-weight: 600;
