@@ -929,6 +929,8 @@ function bindAutocompletes() {
   attachAutocomplete($("#fabricForm").colour, colourOptions);
   attachAutocomplete($("#cuttingForm").commonName, commonNameOptions);
   attachAutocomplete($("#cuttingForm").sku, skuOptions);
+  attachAutocomplete($("#estimationForm").commonName, commonNameOptions);
+  attachAutocomplete($("#estimationForm").sku, skuOptions);
   attachAutocomplete($("#outsourcingForm").commonName, commonNameOptions);
   attachAutocomplete($("#outsourcingForm").sku, skuOptions);
   attachAutocomplete($("#accessoryStockForm").sku, skuOptions);
@@ -1019,6 +1021,140 @@ function splitBatch(cutting, splitSizes) {
   };
   state.cuttings.push(child);
   return child;
+}
+
+// --- Fabric estimation (planning tool: no state is saved or consumed) ---
+
+// Holds the fabric requirement(s) for whatever SKU is currently loaded on
+// the Estimation tab: one entry per fabric slot (most styles have one;
+// coord sets/multi-fabric styles have two). Rebuilt whenever the
+// commonName/SKU field resolves to a match; read by renderEstimationRows.
+let estimationRequirements = [];
+
+function buildEstimationRequirements(fabricRecord) {
+  if (!fabricRecord) return [];
+  const reqs = [];
+  if (fabricRecord.fabric) {
+    reqs.push({ name: fabricRecord.fabric, printType: fabricRecord.printType, colour: fabricRecord.colour });
+  }
+  if (fabricRecord.fabric2) {
+    reqs.push({ name: fabricRecord.fabric2, printType: fabricRecord.printType2, colour: fabricRecord.colour2 });
+  }
+  return reqs;
+}
+
+// Sums *every* received roll matching this fabric/print/colour (not just
+// the first, unlike matchFabricForSku) since an estimate should reflect
+// total stock on hand, not one specific roll.
+function totalAvailableFabricStock(name, printType, colour) {
+  const matches = state.fabrics.filter((fabric) =>
+    fabric.name.toLowerCase() === String(name || "").toLowerCase() &&
+    (fabric.printType || "").toLowerCase() === String(printType || "").toLowerCase() &&
+    (fabric.colour || "").toLowerCase() === String(colour || "").toLowerCase()
+  );
+  return {
+    available: matches.reduce((sum, fabric) => sum + getAvailableFabric(fabric), 0),
+    rollCount: matches.length
+  };
+}
+
+function renderEstimationRows() {
+  const container = $("#estimationComponentsContainer");
+  if (!estimationRequirements.length) {
+    const form = $("#estimationForm");
+    const hasTypedSomething = form.commonName.value.trim() || form.sku.value.trim();
+    container.innerHTML = hasTypedSomething
+      ? `<p class="estimation-empty">No fabric data found for that style &mdash; check the spelling, or pick a different match.</p>`
+      : `<p class="estimation-empty">Pick a common name or SKU above to load its fabric requirement(s).</p>`;
+    updateEstimationCalc();
+    return;
+  }
+  container.innerHTML = estimationRequirements.map((req, index) => `
+    <div class="fabric-component-row estimation-row" data-index="${index}">
+      <div class="estimation-fabric-label">
+        <strong>${escapeHtml(req.name || "\u2014")}</strong>
+        <small>${escapeHtml([req.printType, req.colour].filter(Boolean).join(" / ") || "\u2014")}</small>
+      </div>
+      <input class="fabric-avg-used" data-role="avgUsed" type="number" min="0.1" step="0.1" placeholder="cm/piece \u2014 required">
+      <span data-role="needed">\u2014</span>
+      <span data-role="available">\u2014</span>
+      <span class="estimation-status pending" data-role="status">\u2014</span>
+    </div>
+  `).join("");
+  updateEstimationCalc();
+}
+
+// Recomputes needed/available/status for every rendered row from the
+// current pieces + avg-used inputs. Pure read of the DOM + state.fabrics —
+// nothing here is saved, so this is safe to call on every keystroke and
+// after any state change elsewhere (receiving fabric, cutting, etc.).
+function updateEstimationCalc() {
+  const form = $("#estimationForm");
+  const pieces = toNumber(form.pieces.value);
+  let totalNeeded = 0;
+  let anyRows = false;
+  let anyMissingInput = false;
+  let allSufficient = true;
+
+  $$(".estimation-row").forEach((row) => {
+    anyRows = true;
+    const req = estimationRequirements[Number(row.dataset.index)];
+    const avgUsedCm = toNumber(row.querySelector('[data-role="avgUsed"]').value);
+    const needed = (avgUsedCm / 100) * pieces;
+    const { available, rollCount } = totalAvailableFabricStock(req.name, req.printType, req.colour);
+    const neededKnown = avgUsedCm > 0 && pieces > 0;
+    if (neededKnown) totalNeeded += needed;
+
+    row.querySelector('[data-role="needed"]').textContent = neededKnown ? formatMeters(needed) : "\u2014";
+    row.querySelector('[data-role="available"]').textContent = rollCount
+      ? `${formatMeters(available)} (${rollCount} roll${rollCount === 1 ? "" : "s"})`
+      : "Not in stock";
+
+    const statusEl = row.querySelector('[data-role="status"]');
+    if (!neededKnown) {
+      statusEl.textContent = pieces > 0 ? "Enter avg used" : "Enter pieces + avg used";
+      statusEl.className = "estimation-status pending";
+      anyMissingInput = true;
+      allSufficient = false;
+      return;
+    }
+    const shortfall = needed - available;
+    if (shortfall > 0.001) {
+      statusEl.textContent = `Short by ${formatMeters(shortfall)}`;
+      statusEl.className = "estimation-status short";
+      allSufficient = false;
+    } else {
+      statusEl.textContent = `Sufficient \u2014 ${formatMeters(available - needed)} spare`;
+      statusEl.className = "estimation-status ok";
+    }
+  });
+
+  $("#estimationTotalNeeded").textContent = formatMeters(totalNeeded);
+  const verdictEl = $("#estimationVerdict");
+  if (!anyRows) {
+    verdictEl.textContent = "Pick a SKU to begin";
+    verdictEl.className = "pending";
+  } else if (anyMissingInput) {
+    verdictEl.textContent = "Enter pieces + avg fabric used";
+    verdictEl.className = "pending";
+  } else if (allSufficient) {
+    verdictEl.textContent = `Yes \u2014 stock covers ${formatQty(pieces)} pieces`;
+    verdictEl.className = "ok";
+  } else {
+    verdictEl.textContent = "No \u2014 short on fabric, see rows above";
+    verdictEl.className = "short";
+  }
+}
+
+function applySkuToEstimationForm(skuRecord) {
+  const form = $("#estimationForm");
+  if (skuRecord) {
+    form.sku.value = skuRecord.sku;
+    form.commonName.value = skuRecord.commonName;
+  }
+  const fabricRecord = findFabricBySku(skuRecord?.sku);
+  estimationRequirements = buildEstimationRequirements(fabricRecord);
+  renderEstimationRows();
 }
 
 function getFabricRemainingAtCode(code) {
@@ -1231,6 +1367,7 @@ function renderAll() {
   updateCuttingPreview();
   updateFabricTotal();
   updateOutsourcingPreview();
+  updateEstimationCalc();
   if (window.lucide) window.lucide.createIcons();
 }
 
@@ -2894,6 +3031,23 @@ function bindEvents() {
     updateCuttingPreview();
   });
 
+  $("#estimationForm").commonName.addEventListener("change", (event) => {
+    applySkuToEstimationForm(findSkuByCommonName(event.target.value));
+  });
+
+  $("#estimationForm").sku.addEventListener("change", (event) => {
+    applySkuToEstimationForm(findSkuByCode(event.target.value));
+  });
+
+  $("#estimationForm").addEventListener("input", (event) => {
+    if (event.target.name === "pieces" || event.target.dataset.role === "avgUsed") updateEstimationCalc();
+  });
+
+  // No submit button (this tab only calculates, never saves) — but a form
+  // with a single focused text field still submits on Enter in some
+  // browsers, which would reload the page. Swallow it.
+  $("#estimationForm").addEventListener("submit", (event) => event.preventDefault());
+
   $("#cuttingForm").addEventListener("submit", (event) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -3394,6 +3548,7 @@ async function initApp() {
   if ($("#fabricForm").date) $("#fabricForm").date.value = todayDate();
   if ($("#cuttingForm").entryDate) $("#cuttingForm").entryDate.value = todayDate();
   if ($("#accessoryStockForm").date) $("#accessoryStockForm").date.value = todayDate();
+  applySkuToEstimationForm(null);
 }
 
 // --- Auth gating -----------------------------------------------------

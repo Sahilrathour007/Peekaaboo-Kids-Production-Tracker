@@ -656,6 +656,73 @@ main {
   }
 }
 
+.estimation-row {
+  align-items: center;
+}
+
+.estimation-fabric-label {
+  display: grid;
+  gap: 2px;
+}
+
+.estimation-fabric-label small {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.estimation-empty {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+.estimation-status {
+  font-weight: 650;
+  font-size: 13px;
+}
+
+.estimation-status.pending {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.estimation-status.ok {
+  color: var(--success);
+}
+
+.estimation-status.short {
+  color: var(--danger);
+}
+
+#estimationVerdict.pending {
+  color: var(--muted);
+}
+
+#estimationVerdict.ok {
+  color: var(--success);
+}
+
+#estimationVerdict.short {
+  color: var(--danger);
+}
+
+@media (max-width: 780px) {
+  .estimation-row {
+    grid-template-columns: 1.6fr 1fr auto;
+  }
+
+  .estimation-row [data-role="needed"],
+  .estimation-row [data-role="available"] {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 620px) {
+  .estimation-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .garment-component-row {
   display: grid;
   grid-template-columns: 1.4fr 1.4fr 1fr auto;

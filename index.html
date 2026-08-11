@@ -151,6 +151,10 @@
         <i data-lucide="layers-3" aria-hidden="true"></i>
         Fabric inventory
       </button>
+      <button class="tab" type="button" data-tab="estimation">
+        <i data-lucide="calculator" aria-hidden="true"></i>
+        Estimation
+      </button>
       <button class="tab entry-tab" type="button" data-tab="cutting">
         <i data-lucide="scissors" aria-hidden="true"></i>
         Cutting schedule
@@ -291,6 +295,41 @@
           <tbody id="fabricRows"></tbody>
         </table>
       </div>
+    </section>
+
+    <section class="tab-panel" id="estimationPanel">
+      <div class="section-heading">
+        <div>
+          <h2>Fabric estimation</h2>
+          <p>Pick a common name or SKU and how many pieces you want to produce &mdash; see the fabric needed for each roll it uses (styles cut from two fabrics get a row each) and whether current stock covers it.</p>
+        </div>
+      </div>
+      <form class="cutting-layout" id="estimationForm">
+        <div class="form-grid compact">
+          <label>Common name <input name="commonName" autocomplete="off" placeholder="Pathan Boys kurta jacket set - blue"></label>
+          <label>SKU code <input name="sku" autocomplete="off" placeholder="56C74BSlCaSoLeRBRe"></label>
+          <label>Pieces to produce<span class="req">*</span> <input name="pieces" type="number" min="1" step="1" placeholder="40"></label>
+        </div>
+        <div class="fabric-components-section">
+          <div class="fabric-components-header">
+            <span>Fabric requirement <small>Auto-filled from the SKU&rsquo;s master record once you pick a common name or SKU above. Enter the average fabric used per piece for each fabric &mdash; a style cut from two fabrics (coord sets, contrast panels) shows two rows.</small></span>
+          </div>
+          <div class="fabric-row-legend estimation-row-legend" aria-hidden="true">
+            <span>Fabric</span>
+            <span>Avg used/piece (cm)<span class="req">*</span></span>
+            <span>Needed</span>
+            <span>In stock</span>
+            <span>Status</span>
+          </div>
+          <div id="estimationComponentsContainer">
+            <p class="estimation-empty">Pick a common name or SKU above to load its fabric requirement(s).</p>
+          </div>
+        </div>
+        <div class="calculation-strip" id="estimationSummary">
+          <span>Total fabric needed: <strong id="estimationTotalNeeded">0 m</strong></span>
+          <span>Can we fulfill it? <strong id="estimationVerdict">Pick a SKU to begin</strong></span>
+        </div>
+      </form>
     </section>
 
     <section class="tab-panel" id="cuttingPanel">
