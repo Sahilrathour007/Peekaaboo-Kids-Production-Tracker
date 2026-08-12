@@ -1999,8 +1999,13 @@ const AUTO_ADVANCE_ON_FULL_OUTSOURCE = {
 };
 
 function renderOutsourcingRows() {
-  $("#outsourcingRows").innerHTML = state.outsourcing.length
-    ? sortOutsourcingRecent(state.outsourcing).map((entry) => `
+  // Fully received entries no longer belong in the working "Outsourcing
+  // Form" list — they've moved on and now only live in Outsourcing
+  // Receipts (see the flattened receipt log there). This keeps the form's
+  // table limited to what's still actually out with a vendor.
+  const openEntries = state.outsourcing.filter((entry) => !isOutsourcingFullyReceived(entry));
+  $("#outsourcingRows").innerHTML = openEntries.length
+    ? sortOutsourcingRecent(openEntries).map((entry) => `
       <tr data-outsourcing-row="${entry.id}">
         <td><span class="stage-pill">${entry.workType}</span></td>
         <td>${entry.vendorName}</td>
