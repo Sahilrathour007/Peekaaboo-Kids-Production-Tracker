@@ -318,6 +318,14 @@ main {
   display: block;
 }
 
+.outsourcing-subview {
+  display: none;
+}
+
+.outsourcing-subview.active {
+  display: block;
+}
+
 .filter-tabs {
   display: flex;
   align-items: center;

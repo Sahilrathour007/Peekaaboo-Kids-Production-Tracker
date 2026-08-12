@@ -183,10 +183,6 @@
         <i data-lucide="truck" aria-hidden="true"></i>
         Outsourcing
       </button>
-      <button class="tab entry-tab" type="button" data-tab="outsourcing-receipts">
-        <i data-lucide="file-text" aria-hidden="true"></i>
-        Outsourcing Receipts
-      </button>
       <button class="tab entry-tab" type="button" data-tab="incoming-material">
         <i data-lucide="package-open" aria-hidden="true"></i>
         Incoming material
@@ -525,97 +521,110 @@
           <p>Record vendor work for stitching, Kaaj/Button, and handwork with size-wise quantity, delivery date, and accessories.</p>
         </div>
       </div>
-      <div class="fabric-components-section">
-        <div class="fabric-components-header">
-          <span>Out for stitching<small>Fully outsourced batches — waiting on the vendor. Move forward once returned.</small></span>
-        </div>
-        <div class="stage-board" id="stageBoard-outsource-stitching"></div>
-      </div>
-      <form class="cutting-layout" id="outsourcingForm">
-        <div class="source-hint" id="outsourcingHint" hidden>
-          <span id="outsourcingHintText"></span>
-          <button type="button" class="secondary-action" id="clearSourceLink">Clear link</button>
-        </div>
-        <input type="hidden" name="sourceCuttingId" value="">
-        <div class="form-grid compact">
-          <label>Work type<span class="req">*</span>
-            <select required name="workType">
-              <option value="Stitching">Stitching</option>
-              <option value="Kaaj/Button">Kaaj/Button</option>
-              <option value="Handwork">Handwork</option>
-            </select>
-          </label>
-          <label>Vendor name<span class="req">*</span> <input required name="vendorName" autocomplete="off" placeholder="Vendor name"></label>
-          <label>Common name<span class="req">*</span> <input required name="commonName" autocomplete="off" placeholder="London Pink"></label>
-          <label>SKU code<span class="req">*</span> <input required name="sku" autocomplete="off" placeholder="19DoFoLoSoI"></label>
-          <label>Delivery date<span class="req">*</span> <input required name="deliveryDate" type="date"></label>
-        </div>
-        <fieldset class="size-grid">
-          <legend>Size-wise quantity<span class="req">*</span></legend>
-          <label>1-2 Yr <input name="size_1_2" type="number" min="0" step="1" value="0"></label>
-          <label>2-3 Yr <input name="size_2_3" type="number" min="0" step="1" value="0"></label>
-          <label>3-4 Yr <input name="size_3_4" type="number" min="0" step="1" value="0"></label>
-          <label>4-5 Yr <input name="size_4_5" type="number" min="0" step="1" value="0"></label>
-          <label>5-6 Yr <input name="size_5_6" type="number" min="0" step="1" value="0"></label>
-          <label>6-8 Yr <input name="size_6_8" type="number" min="0" step="1" value="0"></label>
-          <label>8-10 Yr <input name="size_8_10" type="number" min="0" step="1" value="0"></label>
-        </fieldset>
-        <fieldset class="size-grid accessory-grid">
-          <legend>Additional accessories</legend>
-          <label>Elastic <input name="elastic" type="number" min="0" step="1" value="0"></label>
-          <label>Button <input name="button" type="number" min="0" step="1" value="0"></label>
-          <label>Tag <input name="tag" type="number" min="0" step="1" value="0"></label>
-          <label>Other <input name="otherAccessory" autocomplete="off" placeholder="Lace, dori, etc."></label>
-        </fieldset>
-        <div class="calculation-strip" id="outsourcingPreview">
-          <span>Total quantity: <strong>0</strong></span>
-        </div>
-        <button class="primary-action" type="submit">
-          <i data-lucide="plus" aria-hidden="true"></i>
-          Add outsourcing entry
+      <div class="sub-tabs" id="outsourcingSubTabs" role="group" aria-label="Outsourcing views">
+        <button class="sub-tab active" type="button" data-outsourcing-view="form">
+          <i data-lucide="truck" aria-hidden="true"></i>
+          Outsourcing Form
         </button>
-      </form>
-      <div class="table-shell">
-        <table>
-          <thead>
-            <tr>
-              <th>Work</th>
-              <th>Vendor</th>
-              <th>SKU</th>
-              <th>Name</th>
-              <th class="num">Qty</th>
-              <th>Delivery</th>
-              <th>Accessories</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="outsourcingRows"></tbody>
-        </table>
+        <button class="sub-tab" type="button" data-outsourcing-view="receipts">
+          <i data-lucide="file-text" aria-hidden="true"></i>
+          Outsourcing Receipts
+        </button>
       </div>
-    </section>
 
-    <section class="tab-panel" id="outsourcing-receiptsPanel">
-      <div class="section-heading">
-        <div>
-          <h2>Outsourcing Receipts</h2>
-          <p>Every incoming receipt logged against a vendor, one row per transaction &mdash; download a printable voucher for any of them.</p>
+      <div class="outsourcing-subview active" id="outsourcingFormView">
+        <div class="fabric-components-section">
+          <div class="fabric-components-header">
+            <span>Out for stitching<small>Fully outsourced batches — waiting on the vendor. Move forward once returned.</small></span>
+          </div>
+          <div class="stage-board" id="stageBoard-outsource-stitching"></div>
+        </div>
+        <form class="cutting-layout" id="outsourcingForm">
+          <div class="source-hint" id="outsourcingHint" hidden>
+            <span id="outsourcingHintText"></span>
+            <button type="button" class="secondary-action" id="clearSourceLink">Clear link</button>
+          </div>
+          <input type="hidden" name="sourceCuttingId" value="">
+          <div class="form-grid compact">
+            <label>Work type<span class="req">*</span>
+              <select required name="workType">
+                <option value="Stitching">Stitching</option>
+                <option value="Kaaj/Button">Kaaj/Button</option>
+                <option value="Handwork">Handwork</option>
+              </select>
+            </label>
+            <label>Vendor name<span class="req">*</span> <input required name="vendorName" autocomplete="off" placeholder="Vendor name"></label>
+            <label>Common name<span class="req">*</span> <input required name="commonName" autocomplete="off" placeholder="London Pink"></label>
+            <label>SKU code<span class="req">*</span> <input required name="sku" autocomplete="off" placeholder="19DoFoLoSoI"></label>
+            <label>Delivery date<span class="req">*</span> <input required name="deliveryDate" type="date"></label>
+          </div>
+          <fieldset class="size-grid">
+            <legend>Size-wise quantity<span class="req">*</span></legend>
+            <label>1-2 Yr <input name="size_1_2" type="number" min="0" step="1" value="0"></label>
+            <label>2-3 Yr <input name="size_2_3" type="number" min="0" step="1" value="0"></label>
+            <label>3-4 Yr <input name="size_3_4" type="number" min="0" step="1" value="0"></label>
+            <label>4-5 Yr <input name="size_4_5" type="number" min="0" step="1" value="0"></label>
+            <label>5-6 Yr <input name="size_5_6" type="number" min="0" step="1" value="0"></label>
+            <label>6-8 Yr <input name="size_6_8" type="number" min="0" step="1" value="0"></label>
+            <label>8-10 Yr <input name="size_8_10" type="number" min="0" step="1" value="0"></label>
+          </fieldset>
+          <fieldset class="size-grid accessory-grid">
+            <legend>Additional accessories</legend>
+            <label>Elastic <input name="elastic" type="number" min="0" step="1" value="0"></label>
+            <label>Button <input name="button" type="number" min="0" step="1" value="0"></label>
+            <label>Tag <input name="tag" type="number" min="0" step="1" value="0"></label>
+            <label>Other <input name="otherAccessory" autocomplete="off" placeholder="Lace, dori, etc."></label>
+          </fieldset>
+          <div class="calculation-strip" id="outsourcingPreview">
+            <span>Total quantity: <strong>0</strong></span>
+          </div>
+          <button class="primary-action" type="submit">
+            <i data-lucide="plus" aria-hidden="true"></i>
+            Add outsourcing entry
+          </button>
+        </form>
+        <div class="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th>Work</th>
+                <th>Vendor</th>
+                <th>SKU</th>
+                <th>Name</th>
+                <th class="num">Qty</th>
+                <th>Delivery</th>
+                <th>Accessories</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="outsourcingRows"></tbody>
+          </table>
         </div>
       </div>
-      <div class="table-shell">
-        <table>
-          <thead>
-            <tr>
-              <th>Date received</th>
-              <th>Work</th>
-              <th>Vendor</th>
-              <th>SKU</th>
-              <th>Name</th>
-              <th class="num">Qty received</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="outsourcingReceiptsRows"></tbody>
-        </table>
+
+      <div class="outsourcing-subview" id="outsourcingReceiptsView">
+        <div class="section-heading">
+          <div>
+            <h2>Outsourcing Receipts</h2>
+            <p>Every incoming receipt logged against a vendor, one row per transaction &mdash; download a printable voucher for any of them.</p>
+          </div>
+        </div>
+        <div class="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th>Date received</th>
+                <th>Work</th>
+                <th>Vendor</th>
+                <th>SKU</th>
+                <th>Name</th>
+                <th class="num">Qty received</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="outsourcingReceiptsRows"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 

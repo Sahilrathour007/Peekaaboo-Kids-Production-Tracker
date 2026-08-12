@@ -3142,6 +3142,11 @@ function switchOverviewView(viewName) {
   $$(".overview-subview").forEach((view) => view.classList.toggle("active", view.id === `overview${viewName === "status" ? "Status" : "Fabric"}View`));
 }
 
+function switchOutsourcingView(viewName) {
+  $$("#outsourcingSubTabs .sub-tab").forEach((btn) => btn.classList.toggle("active", btn.dataset.outsourcingView === viewName));
+  $$(".outsourcing-subview").forEach((view) => view.classList.toggle("active", view.id === `outsourcing${viewName === "form" ? "Form" : "Receipts"}View`));
+}
+
 function bindEvents() {
   $$(".tab").forEach((tab) => {
     tab.addEventListener("click", () => switchTab(tab.dataset.tab));
@@ -3151,6 +3156,12 @@ function bindEvents() {
     const btn = event.target.closest("[data-overview-view]");
     if (!btn) return;
     switchOverviewView(btn.dataset.overviewView);
+  });
+
+  $("#outsourcingSubTabs").addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-outsourcing-view]");
+    if (!btn) return;
+    switchOutsourcingView(btn.dataset.outsourcingView);
   });
 
   $("#overviewFilters").addEventListener("click", (event) => {
@@ -3786,6 +3797,7 @@ function bindEvents() {
       const cutting = state.cuttings.find((item) => item.id === outsourcePrefill.dataset.outsourcePrefill);
       if (cutting) {
         switchTab("outsourcing");
+        switchOutsourcingView("form");
         prefillOutsourcingFromCutting(cutting, outsourcePrefill.dataset.outsourceWorkType || "Stitching");
       }
     }
