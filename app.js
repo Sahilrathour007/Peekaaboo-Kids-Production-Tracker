@@ -2013,9 +2013,6 @@ function renderOutsourcingRows() {
         <td>${entry.deliveryDate}</td>
         <td>${formatAccessories(entry.accessories)}</td>
         <td class="num">
-          <button class="icon-button" type="button" data-print-outsourcing="${entry.id}" aria-label="Download receipt" data-tooltip="Download receipt">
-            <i data-lucide="file-text" aria-hidden="true"></i>
-          </button>
           <button class="icon-button danger" type="button" data-delete-outsourcing="${entry.id}" aria-label="Delete outsourcing entry" data-tooltip="Delete">
             <i data-lucide="trash-2" aria-hidden="true"></i>
           </button>
@@ -3800,12 +3797,6 @@ function bindEvents() {
         switchOutsourcingView("form");
         prefillOutsourcingFromCutting(cutting, outsourcePrefill.dataset.outsourceWorkType || "Stitching");
       }
-    }
-
-    const printOutsourcing = event.target.closest("[data-print-outsourcing]");
-    if (printOutsourcing) {
-      const entry = state.outsourcing.find((item) => item.id === printOutsourcing.dataset.printOutsourcing);
-      if (entry) openOutsourcingReceipt(entry);
     }
 
     const printReceipt = event.target.closest("[data-print-receipt]");
