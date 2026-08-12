@@ -1442,6 +1442,7 @@ function renderAll() {
   renderCuttingRows();
   renderStagePanels();
   renderOutsourcingRows();
+  renderOutsourcingReceiptsRows();
   renderIncomingMaterialRows();
   renderAccessoryRows();
   renderAccessoryStockRows();
@@ -2169,6 +2170,196 @@ function openOutsourcingReceipt(entry) {
   const receiptWindow = window.open("", "_blank");
   if (!receiptWindow) {
     alert("Please allow pop-ups to download the receipt.");
+    return;
+  }
+  receiptWindow.document.open();
+  receiptWindow.document.write(html);
+  receiptWindow.document.close();
+}
+
+// --- Outsourcing Receipts (flat log of every "Log receipt" transaction) ---
+// Each outsourcing entry can accumulate several partial receipts over time
+// (see entry.receipts in normalizeState / submitReceipt). "Incoming
+// material" only shows the aggregate per entry; this flattens every
+// individual receipt into its own row across all entries, most recent
+// first, so each one can be reviewed or printed as a standalone voucher.
+function getAllOutsourcingReceipts() {
+  return state.outsourcing.flatMap((entry) =>
+    (entry.receipts || []).map((receipt) => ({ entry, receipt }))
+  );
+}
+
+function sortOutsourcingReceiptsRecent(list) {
+  return [...list].sort((a, b) => {
+    const dateDiff = (b.receipt.date || "").localeCompare(a.receipt.date || "");
+    if (dateDiff !== 0) return dateDiff;
+    return (b.receipt.id || "").localeCompare(a.receipt.id || "");
+  });
+}
+
+// Voucher numbers are assigned by chronological (oldest-first) order so
+// they stay stable and sequential regardless of which order rows are
+// displayed in.
+function buildReceiptNumberMap() {
+  const chronological = [...getAllOutsourcingReceipts()].sort((a, b) =>
+    (a.receipt.date || "").localeCompare(b.receipt.date || "")
+  );
+  const map = new Map();
+  chronological.forEach((item, index) => map.set(item.receipt.id, index + 1));
+  return map;
+}
+
+function renderOutsourcingReceiptsRows() {
+  const rows = sortOutsourcingReceiptsRecent(getAllOutsourcingReceipts());
+  $("#outsourcingReceiptsRows").innerHTML = rows.length
+    ? rows.map(({ entry, receipt }) => `
+      <tr>
+        <td>${formatDate(receipt.date)}</td>
+        <td><span class="stage-pill">${escapeHtml(entry.workType)}</span></td>
+        <td>${escapeHtml(entry.vendorName)}</td>
+        <td>${escapeHtml(entry.sku)}</td>
+        <td>${escapeHtml(entry.commonName)}</td>
+        <td class="num">${formatQty(receipt.qty)}</td>
+        <td class="num">
+          <button class="icon-button" type="button" data-print-receipt="${entry.id}::${receipt.id}" aria-label="Download voucher" data-tooltip="Download voucher">
+            <i data-lucide="file-text" aria-hidden="true"></i>
+          </button>
+        </td>
+      </tr>
+    `).join("")
+    : emptyRow(7);
+}
+
+// Builds a print-ready "Goods Received Voucher" for one specific receipt
+// transaction (not the whole outsourcing entry) and opens it in a new tab,
+// mirroring openOutsourcingReceipt's plain-HTML + window.print() approach.
+function openIncomingReceiptVoucher(entry, receipt) {
+  const receiptNo = `RCV-${String(buildReceiptNumberMap().get(receipt.id) || 0).padStart(4, "0")}`;
+  const receivedToDate = (entry.receipts || [])
+    .filter((r) => r.date < receipt.date || (r.date === receipt.date && r.id <= receipt.id))
+    .reduce((sum, r) => sum + toNumber(r.qty), 0);
+  const totalOrdered = getPieces(entry.sizes);
+  const stillPending = Math.max(0, totalOrdered - receivedToDate);
+
+  const letterheadLines = [COMPANY_INFO.address, COMPANY_INFO.phone, COMPANY_INFO.gstin ? `GSTIN: ${COMPANY_INFO.gstin}` : ""]
+    .filter(Boolean)
+    .map((line) => `<div>${escapeHtml(line)}</div>`)
+    .join("");
+
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Receipt ${receiptNo}</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Inter, ui-sans-serif, system-ui, sans-serif;
+    color: #1d2129;
+    margin: 0;
+    padding: 40px;
+    max-width: 780px;
+    margin-inline: auto;
+  }
+  .letterhead {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 3px solid #006d77;
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+  }
+  .letterhead h1 { margin: 0; font-size: 22px; color: #006d77; }
+  .letterhead p { margin: 2px 0 0; color: #667085; font-size: 13px; }
+  .letterhead .meta { text-align: right; font-size: 13px; color: #475467; }
+  .letterhead .meta strong { display: block; font-size: 16px; color: #1d2129; }
+  .parties {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .parties .box {
+    border: 1px solid #d9dee7;
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .parties .box span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #667085; margin-bottom: 4px; }
+  .parties .box strong { font-size: 15px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  th, td { padding: 9px 10px; border-bottom: 1px solid #e4e7ec; text-align: left; font-size: 13px; }
+  th { background: #f6f7f9; color: #475467; font-size: 11px; text-transform: uppercase; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .totals { width: 260px; margin-left: auto; margin-bottom: 32px; }
+  .totals tr td:first-child { color: #667085; }
+  .totals tr.grand td { font-size: 16px; font-weight: 700; border-top: 2px solid #1d2129; border-bottom: none; padding-top: 10px; }
+  .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 60px; }
+  .signatures .line { border-top: 1px solid #1d2129; padding-top: 6px; font-size: 12px; color: #475467; }
+  @media print {
+    body { padding: 0; }
+    @page { margin: 18mm; }
+  }
+</style>
+</head>
+<body>
+  <div class="letterhead">
+    <div>
+      <h1>${escapeHtml(COMPANY_INFO.name)}</h1>
+      <p>${escapeHtml(COMPANY_INFO.tagline)}</p>
+      ${letterheadLines}
+    </div>
+    <div class="meta">
+      <strong>Goods Received Voucher</strong>
+      Voucher No: ${receiptNo}<br>
+      Date: ${formatDate(receipt.date)}
+    </div>
+  </div>
+
+  <div class="parties">
+    <div class="box">
+      <span>Vendor</span>
+      <strong>${escapeHtml(entry.vendorName)}</strong>
+      <div>Work: ${escapeHtml(entry.workType)}</div>
+    </div>
+    <div class="box">
+      <span>Item</span>
+      <strong>${escapeHtml(entry.commonName)}</strong>
+      <div>SKU: ${escapeHtml(entry.sku)}</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Description</th><th class="num">Qty received</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>${escapeHtml(entry.workType)} &mdash; ${escapeHtml(entry.commonName)}</td>
+        <td class="num">${formatQty(receipt.qty)}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table class="totals">
+    <tbody>
+      <tr><td>Total ordered</td><td class="num">${formatQty(totalOrdered)}</td></tr>
+      <tr><td>Received to date</td><td class="num">${formatQty(receivedToDate)}</td></tr>
+      <tr class="grand"><td>Still pending</td><td class="num">${formatQty(stillPending)}</td></tr>
+    </tbody>
+  </table>
+
+  <div class="signatures">
+    <div class="line">Received by</div>
+    <div class="line">Vendor signature</div>
+  </div>
+
+  <script>window.onload = () => setTimeout(() => window.print(), 200);</script>
+</body>
+</html>`;
+
+  const receiptWindow = window.open("", "_blank");
+  if (!receiptWindow) {
+    alert("Please allow pop-ups to download the voucher.");
     return;
   }
   receiptWindow.document.open();
@@ -3603,6 +3794,14 @@ function bindEvents() {
     if (printOutsourcing) {
       const entry = state.outsourcing.find((item) => item.id === printOutsourcing.dataset.printOutsourcing);
       if (entry) openOutsourcingReceipt(entry);
+    }
+
+    const printReceipt = event.target.closest("[data-print-receipt]");
+    if (printReceipt) {
+      const [entryId, receiptId] = printReceipt.dataset.printReceipt.split("::");
+      const entry = state.outsourcing.find((item) => item.id === entryId);
+      const receipt = entry?.receipts?.find((item) => item.id === receiptId);
+      if (entry && receipt) openIncomingReceiptVoucher(entry, receipt);
     }
 
     const deleteOutsourcing = event.target.closest("[data-delete-outsourcing]");

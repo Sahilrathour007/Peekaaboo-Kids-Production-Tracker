@@ -183,6 +183,10 @@
         <i data-lucide="truck" aria-hidden="true"></i>
         Outsourcing
       </button>
+      <button class="tab entry-tab" type="button" data-tab="outsourcing-receipts">
+        <i data-lucide="file-text" aria-hidden="true"></i>
+        Outsourcing Receipts
+      </button>
       <button class="tab entry-tab" type="button" data-tab="incoming-material">
         <i data-lucide="package-open" aria-hidden="true"></i>
         Incoming material
@@ -586,6 +590,31 @@
             </tr>
           </thead>
           <tbody id="outsourcingRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="outsourcing-receiptsPanel">
+      <div class="section-heading">
+        <div>
+          <h2>Outsourcing Receipts</h2>
+          <p>Every incoming receipt logged against a vendor, one row per transaction &mdash; download a printable voucher for any of them.</p>
+        </div>
+      </div>
+      <div class="table-shell">
+        <table>
+          <thead>
+            <tr>
+              <th>Date received</th>
+              <th>Work</th>
+              <th>Vendor</th>
+              <th>SKU</th>
+              <th>Name</th>
+              <th class="num">Qty received</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="outsourcingReceiptsRows"></tbody>
         </table>
       </div>
     </section>
