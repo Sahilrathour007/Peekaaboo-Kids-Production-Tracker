@@ -2017,6 +2017,7 @@ function renderOutsourcingRows() {
         </td>
         <td>${entry.deliveryDate}</td>
         <td>${formatAccessories(entry.accessories)}</td>
+        <td>${formatDate((entry.createdAt || "").slice(0, 10))}</td>
         <td class="num">
           <button class="icon-button danger" type="button" data-delete-outsourcing="${entry.id}" aria-label="Delete outsourcing entry" data-tooltip="Delete">
             <i data-lucide="trash-2" aria-hidden="true"></i>
@@ -2024,7 +2025,7 @@ function renderOutsourcingRows() {
         </td>
       </tr>
     `).join("")
-    : emptyRow(8);
+    : emptyRow(9);
 }
 
 // Fill these in once with your real business details — they're reused on
