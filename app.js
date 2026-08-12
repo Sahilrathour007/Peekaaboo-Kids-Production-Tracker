@@ -1441,6 +1441,7 @@ function renderAll() {
   renderFabricRows();
   renderCuttingRows();
   renderStagePanels();
+  renderPendingOutsourcingBoard();
   renderOutsourcingRows();
   renderOutsourcingReceiptsRows();
   renderIncomingMaterialRows();
@@ -1787,6 +1788,24 @@ function setOverviewFilter(filter) {
 // Each stage now has its own primary nav tab and panel (instead of one
 // shared kanban board), so this fills each stage's #stageBoard-<slug>
 // container with just that stage's batches.
+// "Pending outsourcing" is every batch sitting at a stage that has an
+// "outsource" option (see STAGE_TRANSITIONS) with pieces still uncommitted
+// to any vendor at that stage. It deliberately reuses renderBatchCard so
+// the exact same "Outsource ..." action button that already exists on each
+// stage's own board shows up here too — clicking it jumps straight to
+// Vendor outsourcing, pre-filled, same as it always has.
+function renderPendingOutsourcingBoard() {
+  const container = document.getElementById("stageBoard-pending-outsource");
+  if (!container) return;
+  const pending = state.cuttings.filter((cutting) => {
+    const hasOutsourceOption = (STAGE_TRANSITIONS[cutting.stage] || []).some((t) => t.type === "outsource");
+    return hasOutsourceOption && getRemainingPieces(cutting) > 0;
+  });
+  container.innerHTML = pending.length
+    ? sortCuttingsRecent(pending).map(renderBatchCard).join("")
+    : '<p class="empty">Nothing waiting to be outsourced right now.</p>';
+}
+
 function renderStagePanels() {
   STAGES.forEach((stage) => {
     const slug = STAGE_TAB_SLUGS[stage];
@@ -2394,15 +2413,16 @@ function renderIncomingMaterialRows() {
         </td>
         <td class="num">${fullyReceived ? '<span class="code-pill">Fully received</span>' : formatQty(getOutsourcingPendingQty(entry))}</td>
         <td>${fullyReceived ? "&mdash;" : formatDate(entry.pendingDeliveryDate || entry.deliveryDate)}</td>
+        <td>${formatDate((entry.createdAt || "").slice(0, 10))}</td>
         <td class="num">
-          <button class="secondary-action" type="button" data-log-receipt="${entry.id}" ${fullyReceived ? "disabled" : ""}>
-            Log receipt
-          </button>
+          ${fullyReceived
+            ? '<span class="code-pill">Closed</span>'
+            : `<button class="secondary-action" type="button" data-log-receipt="${entry.id}">Log receipt</button>`}
         </td>
       </tr>
     `;
       }).join("")
-    : emptyRow(9);
+    : emptyRow(10);
 }
 
 // "Log receipt" dialog: records one incoming delivery against an
@@ -3145,9 +3165,11 @@ function switchOverviewView(viewName) {
   $$(".overview-subview").forEach((view) => view.classList.toggle("active", view.id === `overview${viewName === "status" ? "Status" : "Fabric"}View`));
 }
 
+const OUTSOURCING_VIEW_IDS = { pending: "Pending", vendor: "Vendor", receipts: "Receipts" };
+
 function switchOutsourcingView(viewName) {
   $$("#outsourcingSubTabs .sub-tab").forEach((btn) => btn.classList.toggle("active", btn.dataset.outsourcingView === viewName));
-  $$(".outsourcing-subview").forEach((view) => view.classList.toggle("active", view.id === `outsourcing${viewName === "form" ? "Form" : "Receipts"}View`));
+  $$(".outsourcing-subview").forEach((view) => view.classList.toggle("active", view.id === `outsourcing${OUTSOURCING_VIEW_IDS[viewName] || "Pending"}View`));
 }
 
 function bindEvents() {
@@ -3800,7 +3822,7 @@ function bindEvents() {
       const cutting = state.cuttings.find((item) => item.id === outsourcePrefill.dataset.outsourcePrefill);
       if (cutting) {
         switchTab("outsourcing");
-        switchOutsourcingView("form");
+        switchOutsourcingView("vendor");
         prefillOutsourcingFromCutting(cutting, outsourcePrefill.dataset.outsourceWorkType || "Stitching");
       }
     }

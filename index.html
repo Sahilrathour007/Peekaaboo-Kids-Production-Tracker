@@ -518,21 +518,35 @@
       <div class="section-heading">
         <div>
           <h2>Outsourcing</h2>
-          <p>Record vendor work for stitching, Kaaj/Button, and handwork with size-wise quantity, delivery date, and accessories.</p>
+          <p>Track what's waiting to go out, place vendor work, and review what's already been logged as received.</p>
         </div>
       </div>
       <div class="sub-tabs" id="outsourcingSubTabs" role="group" aria-label="Outsourcing views">
-        <button class="sub-tab active" type="button" data-outsourcing-view="form">
+        <button class="sub-tab active" type="button" data-outsourcing-view="pending">
+          <i data-lucide="clock" aria-hidden="true"></i>
+          Pending outsourcing
+        </button>
+        <button class="sub-tab" type="button" data-outsourcing-view="vendor">
           <i data-lucide="truck" aria-hidden="true"></i>
-          Outsourcing Form
+          Vendor outsourcing
         </button>
         <button class="sub-tab" type="button" data-outsourcing-view="receipts">
           <i data-lucide="file-text" aria-hidden="true"></i>
-          Outsourcing Receipts
+          Receipts summary
         </button>
       </div>
 
-      <div class="outsourcing-subview active" id="outsourcingFormView">
+      <div class="outsourcing-subview active" id="outsourcingPendingView">
+        <div class="section-heading" style="margin-top: 20px;">
+          <div>
+            <h2>Not yet outsourced</h2>
+            <p>Batches that are ready to go to a vendor (or still could) but have no outsourcing entry against their remaining pieces yet. Click a batch's action button to jump to Vendor outsourcing pre-filled.</p>
+          </div>
+        </div>
+        <div class="stage-board" id="stageBoard-pending-outsource"></div>
+      </div>
+
+      <div class="outsourcing-subview" id="outsourcingVendorView">
         <div class="fabric-components-section">
           <div class="fabric-components-header">
             <span>Out for stitching<small>Fully outsourced batches — waiting on the vendor. Move forward once returned.</small></span>
@@ -583,6 +597,12 @@
             Add outsourcing entry
           </button>
         </form>
+        <div class="section-heading" style="margin-top: 20px;">
+          <div>
+            <h2>Open orders</h2>
+            <p>Only orders not yet fully received. Once an order is fully received against it in Incoming material, it drops off this list &mdash; it still lives in Receipts summary and Incoming material's full history.</p>
+          </div>
+        </div>
         <div class="table-shell">
           <table>
             <thead>
@@ -591,7 +611,7 @@
                 <th>Vendor</th>
                 <th>SKU</th>
                 <th>Name</th>
-                <th class="num">Qty</th>
+                <th class="num">Ordered qty</th>
                 <th>Delivery</th>
                 <th>Accessories</th>
                 <th>Created</th>
@@ -606,7 +626,7 @@
       <div class="outsourcing-subview" id="outsourcingReceiptsView">
         <div class="section-heading">
           <div>
-            <h2>Outsourcing Receipts</h2>
+            <h2>Receipts summary</h2>
             <p>Every incoming receipt logged against a vendor, one row per transaction &mdash; download a printable voucher for any of them.</p>
           </div>
         </div>
@@ -632,8 +652,8 @@
     <section class="tab-panel" id="incoming-materialPanel">
       <div class="section-heading">
         <div>
-          <h2>Incoming outsourcing material</h2>
-          <p>Log what comes back from vendors for stitching, Kaaj/Button, and handwork &mdash; partial or full &mdash; and track pending quantity and the revised delivery date for whatever's still out.</p>
+          <h2>Vendor receiving status</h2>
+          <p>Every outsourcing order ever placed &mdash; open and fully received &mdash; in one list, so you can log what comes back and see the full history. For just the orders still out with a vendor, use Outsourcing &rarr; Open orders instead.</p>
         </div>
         <button class="primary-action" type="button" id="addReceiptBtn">
           <i data-lucide="plus" aria-hidden="true"></i>
@@ -648,10 +668,11 @@
               <th>Vendor</th>
               <th>SKU</th>
               <th>Name</th>
-              <th class="num">Sent</th>
-              <th class="num">Received</th>
+              <th class="num">Ordered qty</th>
+              <th class="num">Received qty</th>
               <th class="num">Pending qty</th>
               <th>Pending delivery</th>
+              <th>Created</th>
               <th></th>
             </tr>
           </thead>
