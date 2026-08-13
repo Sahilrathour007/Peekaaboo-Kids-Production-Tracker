@@ -2397,11 +2397,29 @@ function formatReceiptHistory(entry) {
     .join(", ")}</small>`;
 }
 
+// The date of the most recent receipt logged against an entry — used both
+// to show "Last received" on the Closed view and to decide when a fully
+// received entry ages off that view (one week after this date).
+function getLastReceiptDate(entry) {
+  const dates = (entry.receipts || []).map((receipt) => receipt.date).filter(Boolean);
+  return dates.length ? dates.reduce((latest, date) => (date > latest ? date : latest)) : null;
+}
+
+const CLOSED_VISIBILITY_DAYS = 7;
+
+function isClosedEntryStillVisible(entry) {
+  const lastReceiptDate = getLastReceiptDate(entry);
+  if (!lastReceiptDate) return true; // no date to judge by — don't hide it
+  const closedAt = Date.parse(lastReceiptDate);
+  if (!Number.isFinite(closedAt)) return true;
+  const ageDays = (Date.now() - closedAt) / (1000 * 60 * 60 * 24);
+  return ageDays < CLOSED_VISIBILITY_DAYS;
+}
+
 function renderIncomingMaterialRows() {
-  $("#incomingMaterialRows").innerHTML = state.outsourcing.length
-    ? sortOutsourcingRecent(state.outsourcing).map((entry) => {
-        const fullyReceived = isOutsourcingFullyReceived(entry);
-        return `
+  const openEntries = state.outsourcing.filter((entry) => !isOutsourcingFullyReceived(entry));
+  $("#incomingMaterialOpenRows").innerHTML = openEntries.length
+    ? sortOutsourcingRecent(openEntries).map((entry) => `
       <tr>
         <td><span class="stage-pill">${entry.workType}</span></td>
         <td>${entry.vendorName}</td>
@@ -2412,18 +2430,42 @@ function renderIncomingMaterialRows() {
           <div>${formatQty(getOutsourcingReceivedQty(entry))}</div>
           ${formatReceiptHistory(entry)}
         </td>
-        <td class="num">${fullyReceived ? '<span class="code-pill">Fully received</span>' : formatQty(getOutsourcingPendingQty(entry))}</td>
-        <td>${fullyReceived ? "&mdash;" : formatDate(entry.pendingDeliveryDate || entry.deliveryDate)}</td>
+        <td class="num">${formatQty(getOutsourcingPendingQty(entry))}</td>
+        <td>${formatDate(entry.pendingDeliveryDate || entry.deliveryDate)}</td>
         <td>${formatDate((entry.createdAt || "").slice(0, 10))}</td>
         <td class="num">
-          ${fullyReceived
-            ? '<span class="code-pill">Closed</span>'
-            : `<button class="secondary-action" type="button" data-log-receipt="${entry.id}">Log receipt</button>`}
+          <button class="secondary-action" type="button" data-log-receipt="${entry.id}">Log receipt</button>
         </td>
       </tr>
-    `;
-      }).join("")
+    `).join("")
     : emptyRow(10);
+
+  // Fully received entries move here instead, newest receipt first, and
+  // age off entirely (from this view, not from the underlying data) once
+  // their last receipt is more than a week old — see isClosedEntryStillVisible.
+  const closedEntries = state.outsourcing.filter(
+    (entry) => isOutsourcingFullyReceived(entry) && isClosedEntryStillVisible(entry)
+  );
+  $("#incomingMaterialClosedRows").innerHTML = closedEntries.length
+    ? closedEntries
+        .slice()
+        .sort((a, b) => (getLastReceiptDate(b) || "").localeCompare(getLastReceiptDate(a) || ""))
+        .map((entry) => `
+      <tr>
+        <td><span class="stage-pill">${entry.workType}</span></td>
+        <td>${entry.vendorName}</td>
+        <td>${entry.sku}</td>
+        <td>${entry.commonName}</td>
+        <td class="num">${formatQty(getPieces(entry.sizes))}</td>
+        <td class="num">
+          <div>${formatQty(getOutsourcingReceivedQty(entry))}</div>
+          ${formatReceiptHistory(entry)}
+        </td>
+        <td>${formatDate(getLastReceiptDate(entry))}</td>
+        <td>${formatDate((entry.createdAt || "").slice(0, 10))}</td>
+      </tr>
+    `).join("")
+    : emptyRow(8);
 }
 
 // "Log receipt" dialog: records one incoming delivery against an
@@ -3181,6 +3223,13 @@ function switchOutsourcingView(viewName) {
   $$(".outsourcing-subview").forEach((view) => view.classList.toggle("active", view.id === `outsourcing${OUTSOURCING_VIEW_IDS[viewName] || "Pending"}View`));
 }
 
+const INCOMING_MATERIAL_VIEW_IDS = { open: "Open", closed: "Closed" };
+
+function switchIncomingMaterialView(viewName) {
+  $$("#incomingMaterialSubTabs .sub-tab").forEach((btn) => btn.classList.toggle("active", btn.dataset.incomingMaterialView === viewName));
+  $$(".incoming-material-subview").forEach((view) => view.classList.toggle("active", view.id === `incomingMaterial${INCOMING_MATERIAL_VIEW_IDS[viewName] || "Open"}View`));
+}
+
 function bindEvents() {
   $$(".tab").forEach((tab) => {
     tab.addEventListener("click", () => switchTab(tab.dataset.tab));
@@ -3196,6 +3245,12 @@ function bindEvents() {
     const btn = event.target.closest("[data-outsourcing-view]");
     if (!btn) return;
     switchOutsourcingView(btn.dataset.outsourcingView);
+  });
+
+  $("#incomingMaterialSubTabs").addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-incoming-material-view]");
+    if (!btn) return;
+    switchIncomingMaterialView(btn.dataset.incomingMaterialView);
   });
 
   $("#overviewFilters").addEventListener("click", (event) => {

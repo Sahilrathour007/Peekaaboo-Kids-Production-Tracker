@@ -620,31 +620,65 @@
       <div class="section-heading">
         <div>
           <h2>Vendor receiving status</h2>
-          <p>Every outsourcing order ever placed &mdash; open and fully received &mdash; in one list, so you can log what comes back and see the full history. For just the orders still out with a vendor, use Outsourcing &rarr; Open orders instead.</p>
+          <p>Log what comes back from vendors and see the full history. Fully received orders move to Closed and drop off there a week after their last receipt.</p>
         </div>
         <button class="primary-action" type="button" id="addReceiptBtn">
           <i data-lucide="plus" aria-hidden="true"></i>
           Log receipt
         </button>
       </div>
-      <div class="table-shell">
-        <table>
-          <thead>
-            <tr>
-              <th>Work</th>
-              <th>Vendor</th>
-              <th>SKU</th>
-              <th>Name</th>
-              <th class="num">Ordered qty</th>
-              <th class="num">Received qty</th>
-              <th class="num">Pending qty</th>
-              <th>Pending delivery</th>
-              <th>Created</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="incomingMaterialRows"></tbody>
-        </table>
+      <div class="sub-tabs" id="incomingMaterialSubTabs" role="group" aria-label="Incoming material views">
+        <button class="sub-tab active" type="button" data-incoming-material-view="open">
+          <i data-lucide="truck" aria-hidden="true"></i>
+          Open
+        </button>
+        <button class="sub-tab" type="button" data-incoming-material-view="closed">
+          <i data-lucide="check-check" aria-hidden="true"></i>
+          Closed
+        </button>
+      </div>
+
+      <div class="incoming-material-subview active" id="incomingMaterialOpenView">
+        <div class="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th>Work</th>
+                <th>Vendor</th>
+                <th>SKU</th>
+                <th>Name</th>
+                <th class="num">Ordered qty</th>
+                <th class="num">Received qty</th>
+                <th class="num">Pending qty</th>
+                <th>Pending delivery</th>
+                <th>Created</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="incomingMaterialOpenRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="incoming-material-subview" id="incomingMaterialClosedView">
+        <p class="section-heading" style="margin-top: 12px;"><small>Fully received orders, most recent first. An entry drops off this list a week after its last receipt &mdash; it still lives in its SKU's history, it just stops cluttering this view.</small></p>
+        <div class="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th>Work</th>
+                <th>Vendor</th>
+                <th>SKU</th>
+                <th>Name</th>
+                <th class="num">Ordered qty</th>
+                <th class="num">Received qty</th>
+                <th>Last received</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody id="incomingMaterialClosedRows"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 

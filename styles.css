@@ -326,6 +326,14 @@ main {
   display: block;
 }
 
+.incoming-material-subview {
+  display: none;
+}
+
+.incoming-material-subview.active {
+  display: block;
+}
+
 .filter-tabs {
   display: flex;
   align-items: center;
