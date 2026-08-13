@@ -1022,14 +1022,12 @@ input::placeholder {
   font-weight: 400;
 }
 
-/* Auto-filled fields (fabric code, total length, print/colour pulled from
-   the fabric picker, etc.) get their own treatment so it's obvious at a
-   glance which boxes fill themselves in versus which ones need the
-   person to type something — distinct from both a plain editable field
-   and a field-invalid error state. */
+/* Auto-generated fields (fabric code, etc.) just need to read as
+   "system-filled, don't type here" — a quiet muted look. No accent
+   border: that would make it compete for attention with fields that
+   actually need the person to do something. */
 input[readonly] {
   background: var(--soft);
-  border-left: 3px solid var(--accent);
   color: var(--muted);
   cursor: default;
 }
