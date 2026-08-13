@@ -188,6 +188,14 @@ function normalizeState(value) {
     // single-garment cuts never had one, so they simply show no set badge.
     cutGroupId: cutting.cutGroupId || null,
     garmentLabel: cutting.garmentLabel || "",
+    // outsourceIntent is set the moment someone clicks an "Outsource ..."
+    // button on this batch (see prefillOutsourcingFromCutting) and cleared
+    // the moment that click resolves — either the outsourcing form actually
+    // gets saved, or the batch moves to a different stage some other way.
+    // It's what "Pending outsourcing" filters on, so it only lists batches
+    // where someone started the outsourcing form and never finished it, not
+    // every batch that merely *could* be outsourced next.
+    outsourceIntent: cutting.outsourceIntent || null,
     // rootCode anchors a batch's split lineage (e.g. CUT-0006-A / CUT-0006-B
     // both trace back to rootCode "CUT-0006"). Batches never split keep
     // batchCode === rootCode, so no suffix ever shows for the common case.
@@ -1788,18 +1796,25 @@ function setOverviewFilter(filter) {
 // Each stage now has its own primary nav tab and panel (instead of one
 // shared kanban board), so this fills each stage's #stageBoard-<slug>
 // container with just that stage's batches.
-// "Pending outsourcing" is every batch sitting at a stage that has an
-// "outsource" option (see STAGE_TRANSITIONS) with pieces still uncommitted
-// to any vendor at that stage. It deliberately reuses renderBatchCard so
-// the exact same "Outsource ..." action button that already exists on each
-// stage's own board shows up here too — clicking it jumps straight to
-// Vendor outsourcing, pre-filled, same as it always has.
+// "Pending outsourcing" is every batch where someone clicked an
+// "Outsource ..." button (see prefillOutsourcingFromCutting) and never
+// actually completed the outsourcing form for it — NOT every batch that's
+// merely sitting at a stage where outsourcing is one of the options. A
+// freshly-cut batch nobody has touched yet is not "pending outsourcing";
+// it just hasn't been sent anywhere yet. It deliberately reuses
+// renderBatchCard so the exact same "Outsource ..." action button that
+// already exists on each stage's own board shows up here too — clicking it
+// jumps straight to Vendor outsourcing, pre-filled, same as it always has.
 function renderPendingOutsourcingBoard() {
   const container = document.getElementById("stageBoard-pending-outsource");
   if (!container) return;
   const pending = state.cuttings.filter((cutting) => {
-    const hasOutsourceOption = (STAGE_TRANSITIONS[cutting.stage] || []).some((t) => t.type === "outsource");
-    return hasOutsourceOption && getRemainingPieces(cutting) > 0;
+    // Defensive: only honor an intent that still matches the batch's
+    // current stage. It should always be cleared on any real stage change,
+    // but this keeps a stray/old flag from ever surfacing a stale card.
+    return cutting.outsourceIntent
+      && cutting.outsourceIntent.stage === cutting.stage
+      && getRemainingPieces(cutting) > 0;
   });
   container.innerHTML = pending.length
     ? sortCuttingsRecent(pending).map(renderBatchCard).join("")
@@ -1972,6 +1987,9 @@ function applyStageMove(cutting, stage) {
   cutting.stageHistory = cutting.stageHistory || [];
   cutting.stageHistory.push(cutting.stage);
   cutting.stage = stage;
+  // The batch has moved on some other way, so any unfinished "outsource
+  // this" click from the old stage no longer applies.
+  cutting.outsourceIntent = null;
   // Arriving at a new stage always starts with the full quantity available
   // again — "remaining" tracks what hasn't been committed to a vendor *at
   // this stage*, not lifetime history.
@@ -2014,6 +2032,10 @@ function moveQuantityForward(cutting, stage, selectedSizes) {
   if (!child) return false; // splitBatch already alerted on invalid input
   child.stageHistory = [...previousHistory, previousStage];
   child.stage = stage;
+  // Cloned from the parent, but this chunk is landing on a new stage via a
+  // "move" action, not an unfinished outsource click — don't carry the
+  // parent's pending-outsource flag over.
+  child.outsourceIntent = null;
   delete child.finishedGoodsDate;
   if (stage === "Kaaj/Button") child.sizesRemaining = { ...child.sizes };
   if (stage === "Finished Goods") child.finishedGoodsDate = todayDate();
@@ -3183,6 +3205,14 @@ function prefillOutsourcingFromCutting(cutting, workType = "Stitching") {
   form.commonName.value = cutting.commonName;
   applyCuttingSizesToOutsourcingForm(cutting, workType);
   form.vendorName.focus();
+  // Mark this batch as "outsourcing started, not yet saved" so it shows up
+  // in Pending outsourcing if the form gets abandoned. Cleared as soon as
+  // the outsourcing form is actually submitted for it, or the batch moves
+  // stage some other way (see applyStageMove / moveQuantityForward / the
+  // outsourcing form's auto-advance-on-full-outsource handling).
+  cutting.outsourceIntent = { stage: cutting.stage, workType, startedAt: new Date().toISOString() };
+  saveState();
+  renderPendingOutsourcingBoard();
 }
 
 function switchTab(tabName) {
@@ -3650,6 +3680,11 @@ function bindEvents() {
       SIZES.forEach(([name]) => {
         sourceCutting.sizesRemaining[name] = toNumber(sourceCutting.sizesRemaining[name]) - toNumber(sizes[name]);
       });
+      // The form actually got saved for this batch — whatever "outsourcing
+      // started" flag was set when the button was clicked is resolved now.
+      // If there's leftover to split to another vendor, prefillOutsourcingFromCutting
+      // (below) sets a fresh one for that.
+      sourceCutting.outsourceIntent = null;
       const nextStage = AUTO_ADVANCE_ON_FULL_OUTSOURCE[sourceCutting.stage];
       if (nextStage && getRemainingPieces(sourceCutting) <= 0) {
         sourceCutting.stageHistory = sourceCutting.stageHistory || [];
