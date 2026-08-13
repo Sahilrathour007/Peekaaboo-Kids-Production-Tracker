@@ -1669,7 +1669,7 @@ function renderCuttingRows() {
           <div>${formatMeters(cutting.fabricUsed)}</div>
           ${(cutting.fabricComponents || []).length > 1 ? `<small class="size-breakdown">${cutting.fabricComponents.map((c) => `${escapeHtml(c.fabricCode)}: ${formatMeters(c.used)}`).join(", ")}</small>` : ""}
         </td>
-        <td class="num">${(cutting.fabricComponents || []).map((c) => `<div>${escapeHtml(c.fabricCode)}: ${formatMeters(getFabricRemainingAtCode(c.fabricCode))}</div>`).join("") || "&mdash;"}</td>
+        <td class="num fabric-remaining-cell">${(cutting.fabricComponents || []).map((c) => `<div class="fabric-remaining-row"><span class="code-pill">${escapeHtml(c.fabricCode)}</span><span class="fabric-remaining-value">${formatMeters(getFabricRemainingAtCode(c.fabricCode))}</span></div>`).join("") || "&mdash;"}</td>
         <td><span class="stage-pill">${cutting.stage}</span></td>
         <td class="num">
           <button class="icon-button danger" type="button" data-delete-cutting="${cutting.id}" aria-label="Delete cutting entry ${cutting.batchCode}" data-tooltip="Delete">

@@ -1350,6 +1350,32 @@ tr:last-child td {
   white-space: nowrap;
 }
 
+/* Remaining column (Cutting schedule table): one line per fabric, code
+   pill + value never wrapping mid-code — the old plain "CODE: value" text
+   was breaking across 2-3 lines in the narrow auto-sized column, making the
+   code unreadable. Giving the cell a min-width and keeping each row on a
+   single line fixes that. */
+.fabric-remaining-cell {
+  min-width: 190px;
+}
+
+.fabric-remaining-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.fabric-remaining-row:not(:last-child) {
+  margin-bottom: 6px;
+}
+
+.fabric-remaining-value {
+  font-weight: 650;
+  color: var(--ink);
+}
+
 /* Cutting entries table: names can run long ("Pathan Boys kurta jacket
    set - yellow") — give that column real room instead of letting it
    compress into a three-line wrap next to a wide SKU column. */
