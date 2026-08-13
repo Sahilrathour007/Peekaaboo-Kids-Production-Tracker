@@ -1575,7 +1575,6 @@ function renderFabricRows() {
         <td>${fabric.printType}</td>
         <td>${fabric.colour}</td>
         <td>${formatDate(fabric.date)}</td>
-        <td class="num">${formatQty(fabric.rolls)}</td>
         <td class="num">${formatMeters(fabric.totalLength)}</td>
         <td class="num">${formatMeters(getAvailableFabric(fabric))}</td>
         <td class="num">
@@ -1585,7 +1584,7 @@ function renderFabricRows() {
         </td>
       </tr>
     `).join("")
-    : emptyRow(9);
+    : emptyRow(8);
 }
 
 // Merges the master SKU database with SKUs created via cutting entries
@@ -2925,7 +2924,6 @@ function updateCuttingPreview() {
 
 function updateFabricTotal() {
   const form = $("#fabricForm");
-  form.totalLength.value = toNumber(form.qty.value) * toNumber(form.rolls.value);
   form.codePreview.value = makeFabricCode({
     name: form.name.value,
     printType: form.printType.value,
@@ -3285,20 +3283,13 @@ function bindEvents() {
     event.preventDefault();
     const form = event.currentTarget;
     clearAllInvalid(form);
-    let hasInvalid = false;
-    if (!(toNumber(form.qty.value) > 0)) {
-      markFieldInvalid(form.qty);
-      hasInvalid = true;
-    }
-    if (!(toNumber(form.rolls.value) > 0)) {
-      markFieldInvalid(form.rolls);
-      hasInvalid = true;
-    }
-    if (hasInvalid) {
-      alert("Qty per roll and Rolls must both be greater than 0 before saving. The missing fields are highlighted in red.");
+    if (!(toNumber(form.totalLength.value) > 0)) {
+      markFieldInvalid(form.totalLength);
+      alert("Enter a total length greater than 0 before saving. The missing field is highlighted in red.");
       return;
     }
     updateFabricTotal();
+    const totalLength = toNumber(form.totalLength.value);
     const fabric = {
       id: crypto.randomUUID(),
       code: form.codePreview.value,
@@ -3306,9 +3297,14 @@ function bindEvents() {
       printType: form.printType.value.trim(),
       colour: form.colour.value.trim(),
       date: form.date.value,
-      qty: toNumber(form.qty.value),
-      rolls: toNumber(form.rolls.value),
-      totalLength: toNumber(form.qty.value) * toNumber(form.rolls.value),
+      // The Supabase table only has qty_per_roll/rolls columns (no direct
+      // totalLength column — see mapFabricToSupabaseRow/mapSupabaseRowToFabric,
+      // which derive totalLength as qty_per_roll * rolls on every read). The
+      // form no longer collects rolls separately, so store the single total
+      // length as qty with rolls fixed at 1 to keep that round-trip intact.
+      qty: totalLength,
+      rolls: 1,
+      totalLength,
       consumed: 0
     };
     state.fabrics.push(fabric);

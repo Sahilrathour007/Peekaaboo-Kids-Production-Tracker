@@ -278,21 +278,25 @@
           <p>Add fabric receipts and keep the generated code attached to every cutting entry. Search by the style/nickname to auto-fill fabric, print, and colour &mdash; or skip it and type those three fields directly if you're entering straight from an invoice.</p>
         </div>
       </div>
-      <form class="form-grid" id="fabricForm">
-        <label>Search by style / nickname (optional) <input name="styleSearch" autocomplete="off" placeholder="e.g. Pathan, Boys Saavan, Monday Pant"></label>
-        <label>Fabric name<span class="req">*</span> <input required name="name" autocomplete="off" placeholder="Foil Holland"></label>
-        <label>Print type<span class="req">*</span> <input required name="printType" autocomplete="off" placeholder="Floral"></label>
-        <label>Colour<span class="req">*</span> <input required name="colour" autocomplete="off" placeholder="Pink"></label>
-        <label>Date received<span class="req">*</span> <input required name="date" type="date"></label>
-        <label>Fabric code <input required readonly name="codePreview" autocomplete="off" placeholder="Auto"></label>
-        <label>Qty per roll (m)<span class="req">*</span> <input required name="qty" type="number" min="0" step="0.01" placeholder="150"></label>
-        <label>Rolls<span class="req">*</span> <input required name="rolls" type="number" min="1" step="1" placeholder="4"></label>
-        <label>Total length <input required readonly name="totalLength" type="number" min="0" step="0.01" placeholder="600"></label>
-        <button class="primary-action" type="submit">
-          <i data-lucide="plus" aria-hidden="true"></i>
-          Add fabric
-        </button>
+      <form class="fabric-intake-form" id="fabricForm">
+        <label class="fabric-search-field">Search by style / nickname <span class="optional-hint">(optional)</span>
+          <input name="styleSearch" autocomplete="off" placeholder="e.g. Pathan, Boys Saavan, Monday Pant"></label>
+        <div class="fabric-intake-row">
+          <label>Fabric name<span class="req">*</span> <input required name="name" autocomplete="off" placeholder="e.g. Foil Holland"></label>
+          <label>Print type<span class="req">*</span> <input required name="printType" autocomplete="off" placeholder="e.g. Floral"></label>
+          <label>Colour<span class="req">*</span> <input required name="colour" autocomplete="off" placeholder="e.g. Pink"></label>
+          <label>Fabric code <input required readonly name="codePreview" autocomplete="off" placeholder="Auto"></label>
+        </div>
+        <div class="fabric-intake-row">
+          <label>Date received<span class="req">*</span> <input required name="date" type="date"></label>
+          <label>Total length (m)<span class="req">*</span> <input required name="totalLength" type="number" min="0" step="0.01" placeholder="e.g. 600"></label>
+          <button class="primary-action" type="submit">
+            <i data-lucide="plus" aria-hidden="true"></i>
+            Add fabric
+          </button>
+        </div>
       </form>
+      <div class="section-divider"></div>
       <div class="table-shell">
         <table>
           <thead>
@@ -302,7 +306,6 @@
               <th>Print</th>
               <th>Colour</th>
               <th>Date</th>
-              <th class="num">Rolls</th>
               <th class="num">Total</th>
               <th class="num">Available</th>
               <th></th>

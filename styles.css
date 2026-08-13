@@ -278,7 +278,7 @@ main {
 
 .tab-panel {
   display: none;
-  padding: 20px;
+  padding: 26px;
 }
 
 .tab-panel.active {
@@ -618,7 +618,7 @@ main {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 22px;
 }
 
 .section-heading p {
@@ -904,8 +904,83 @@ main {
 .cutting-layout {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 14px 16px;
+  gap: 16px 18px;
   margin-bottom: 20px;
+}
+
+/* Fabric inventory intake: search sits alone up top (so its label never
+   wraps and drags its input out of line with a neighbour), then the
+   auto-filled identity fields, then date + total length + submit. Each
+   tier is its own row so nothing depends on how long a label happens to
+   be. */
+.fabric-intake-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-bottom: 8px;
+}
+
+.fabric-intake-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px 18px;
+  align-items: end;
+}
+
+.fabric-intake-row:last-child {
+  grid-template-columns: 1fr 1fr auto;
+}
+
+.optional-hint {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 12px;
+}
+
+/* The search is the primary, fastest path through this form (pick a
+   style and everything else fills itself in) so it gets a visibly
+   distinct treatment instead of blending in with the plain-white fields
+   below it. */
+.fabric-search-field {
+  max-width: 480px;
+}
+
+.fabric-search-field input {
+  border-color: var(--accent);
+  background: #eefafa;
+  background: color-mix(in srgb, var(--accent) 6%, #fff);
+  box-shadow: 0 0 0 3px rgba(0, 109, 119, 0.08);
+}
+
+.fabric-search-field input::placeholder {
+  color: var(--accent);
+  opacity: 0.55;
+}
+
+.fabric-search-field input:focus {
+  background: #fff;
+}
+
+/* Visual break between the entry form and the list of what's already
+   been logged, so the two don't read as one continuous block. */
+.section-divider {
+  height: 1px;
+  margin: 24px 0;
+  background: var(--line);
+}
+
+@media (max-width: 780px) {
+  .fabric-intake-row,
+  .fabric-intake-row:last-child {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .fabric-intake-row,
+  .fabric-intake-row:last-child {
+    grid-template-columns: 1fr;
+  }
 }
 
 .form-grid.compact {
@@ -935,6 +1010,16 @@ select {
   background: #fff;
   color: var(--ink);
   font-size: 14px;
+}
+
+/* Placeholder example text (e.g. "e.g. Foil Holland") was rendering nearly
+   as dark and solid as real typed text, so a blank form could look like it
+   was already filled in. Dial it down so it unmistakably reads as a hint,
+   not a value. */
+input::placeholder {
+  color: var(--muted);
+  opacity: 0.75;
+  font-weight: 400;
 }
 
 /* Auto-filled fields (fabric code, total length, print/colour pulled from
