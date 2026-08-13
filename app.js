@@ -443,10 +443,18 @@ function mapCuttingStageMovements(cutting) {
   return rows;
 }
 
+// Safety net: outsourcing.cutting_id is a hard FK to cuttings.id. If
+// sourceCuttingId points at a cutting that no longer exists in local state
+// (e.g. an orphan left over from before the delete-cutting fix, or any
+// other future path that removes a cutting without clearing this link),
+// sending it as-is fails the FK constraint and rolls back the ENTIRE
+// atomic sync. Treat a dangling reference as null rather than let one bad
+// row take every table down with it.
 function mapOutsourcingToSupabaseRow(entry) {
+  const linkedCuttingExists = entry.sourceCuttingId && state.cuttings.some((c) => c.id === entry.sourceCuttingId);
   return {
     id: entry.id,
-    cutting_id: entry.sourceCuttingId || null,
+    cutting_id: linkedCuttingExists ? entry.sourceCuttingId : null,
     work_type: entry.workType,
     vendor_name: entry.vendorName,
     sku: entry.sku,
@@ -537,6 +545,15 @@ function validateStateBeforeSave() {
       issues.push(
         `Accessory stock entry "${entry.label || entry.sku || entry.id}": qty must be > 0. ` +
         `This row will NOT be saved until fixed.`
+      );
+    }
+  });
+
+  state.outsourcing.forEach((entry) => {
+    if (entry.sourceCuttingId && !state.cuttings.some((c) => c.id === entry.sourceCuttingId)) {
+      issues.push(
+        `Outsourcing entry "${entry.sku || entry.id}" (${entry.vendorName || "unknown vendor"}) links to a ` +
+        `cutting batch that no longer exists. Its cutting_id will be saved as blank instead.`
       );
     }
   });
@@ -4037,14 +4054,21 @@ function bindEvents() {
       const id = deleteCutting.dataset.deleteCutting;
       const cutting = state.cuttings.find((item) => item.id === id);
       if (!cutting) return;
-      // A batch already past "Cutting complete" may have outsourcing/
-      // accessory/incoming-material entries pointing at it by SKU and
-      // common name (not a hard link), so deleting it won't break those
-      // records, but it does erase the batch's own trail — worth a
-      // stronger warning than the plain "are you sure" a fresh cut gets.
+      // IMPORTANT: outsourcing.cutting_id IS a hard foreign key in Supabase
+      // (outsourcing_cutting_id_fkey -> cuttings.id), not a soft SKU/name
+      // match. If a cutting is deleted while an outsourcing entry still
+      // references it, that entry becomes orphaned: the next sync tries to
+      // insert an outsourcing row pointing at a cuttings.id that no longer
+      // exists, Postgres rejects it, and because the whole payload is sent
+      // in one atomic RPC, the ENTIRE sync rolls back — not just this row.
+      // So we must null out the link on any outsourcing entries that point
+      // here before removing the cutting, same as the DB doing ON DELETE
+      // SET NULL. The outsourcing record itself (vendor, sku, qty, etc.)
+      // is untouched and keeps syncing fine; it just loses its back-link.
+      const orphanedOutsourcing = state.outsourcing.filter((entry) => entry.sourceCuttingId === id);
       const advanced = cutting.stage !== "Cutting complete" || getRemainingPieces(cutting) < getPieces(cutting.sizes);
       const warning = advanced
-        ? `${cutting.batchCode} (${cutting.commonName}) has already moved past Cutting complete or has pieces routed out. Deleting it removes the batch entirely and restores its fabric to stock, but any outsourcing/stage history already logged against it stays as-is. Delete anyway?`
+        ? `${cutting.batchCode} (${cutting.commonName}) has already moved past Cutting complete or has pieces routed out. Deleting it removes the batch entirely and restores its fabric to stock. Its stage history stays as-is, and ${orphanedOutsourcing.length} outsourcing record(s) referencing this batch will keep their data but lose their link back to it. Delete anyway?`
         : `Delete cutting entry ${cutting.batchCode} (${cutting.commonName})? Its fabric usage will be restored to inventory. This can't be undone.`;
       if (!confirm(warning)) return;
       (cutting.fabricComponents || []).forEach((component) => {
@@ -4052,6 +4076,9 @@ function bindEvents() {
         if (fabric) {
           fabric.consumed = Math.max(0, toNumber(fabric.consumed) - toNumber(component.used) - toNumber(component.correction));
         }
+      });
+      orphanedOutsourcing.forEach((entry) => {
+        entry.sourceCuttingId = null;
       });
       state.cuttings = state.cuttings.filter((item) => item.id !== id);
       saveState();
