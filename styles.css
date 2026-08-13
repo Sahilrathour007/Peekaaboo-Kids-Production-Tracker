@@ -633,6 +633,71 @@ main {
   border-radius: 8px;
 }
 
+/* Cutting form: three visually distinct blocks (style details, fabrics
+   used, garments produced) so the eye can tell at a glance which group
+   of fields it's looking at, instead of one long unbroken form. Each
+   gets its own accent colour and a soft tint of that colour. */
+.cutting-section-block {
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
+  border-radius: 8px;
+}
+
+.cutting-section-title {
+  display: block;
+  margin-bottom: 14px;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.style-block {
+  border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 5%, #fff);
+}
+
+.fabrics-block {
+  border-left-color: var(--accent-2);
+  background: color-mix(in srgb, var(--accent-2) 5%, #fff);
+}
+
+.garments-block {
+  border-left-color: var(--entry);
+  background: var(--entry-soft);
+}
+
+/* Field rows inside the style-details block: identity (common name + SKU)
+   gets two wide columns, meta (gender/date/correction) gets three
+   narrower ones. Flex instead of grid so each wraps cleanly on its own
+   without fighting the shared .form-grid breakpoints. */
+.cutting-field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 18px;
+  margin-bottom: 16px;
+}
+
+.cutting-field-row:last-child {
+  margin-bottom: 0;
+}
+
+.cutting-field-row > label {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.cutting-field-row.identity > label {
+  flex: 1 1 260px;
+}
+
+.gender-auto-hint {
+  color: var(--accent);
+  font-weight: 500;
+  font-size: 11px;
+}
+
 .fabric-components-header {
   display: flex;
   align-items: flex-start;
@@ -844,7 +909,7 @@ main {
 
 .garment-component-row {
   display: grid;
-  grid-template-columns: 1.4fr 1.4fr 1fr auto;
+  grid-template-columns: minmax(200px, 1fr) auto;
   gap: 10px;
   align-items: end;
   margin-bottom: 10px;
@@ -880,15 +945,9 @@ main {
   margin-top: 4px;
 }
 
-@media (max-width: 780px) {
-  .garment-component-row {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
 @media (max-width: 620px) {
   .garment-component-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr auto;
   }
 }
 
@@ -1270,6 +1329,15 @@ tr:last-child td {
   font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
+}
+
+/* Cutting entries table: names can run long ("Pathan Boys kurta jacket
+   set - yellow") — give that column real room instead of letting it
+   compress into a three-line wrap next to a wide SKU column. */
+.col-name {
+  min-width: 220px;
+  max-width: 320px;
+  white-space: normal;
 }
 
 .code-pill,

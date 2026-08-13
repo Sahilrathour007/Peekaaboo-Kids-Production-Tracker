@@ -375,19 +375,26 @@
         </div>
       </div>
       <form class="cutting-layout" id="cuttingForm">
-        <div class="form-grid compact">
-          <label>Common name<span class="req">*</span> <input required name="commonName" autocomplete="off" placeholder="London Pink"></label>
-          <label>SKU code<span class="req">*</span> <input required name="sku" autocomplete="off" placeholder="19DoFoLoSoI"></label>
-          <label>Date<span class="req">*</span> <input required name="entryDate" type="date"></label>
-          <label>Gender<span class="req">*</span>
-            <select required name="gender">
-              <option value="boys">Boys</option>
-              <option value="girls">Girls</option>
-            </select>
-          </label>
-          <label>Correction factor (%)<span class="req">*</span> <input required name="correctionPercent" type="number" min="0" step="0.1" value="5"></label>
+        <div class="cutting-section-block style-block">
+          <span class="cutting-section-title">Style &amp; batch details</span>
+          <div class="cutting-field-row identity">
+            <label>Common name<span class="req">*</span> <input required name="commonName" autocomplete="off" placeholder="London Pink"></label>
+            <label>SKU code<span class="req">*</span> <input required name="sku" autocomplete="off" placeholder="19DoFoLoSoI"></label>
+          </div>
+          <div class="cutting-field-row meta">
+            <label>Gender<span class="req">*</span>
+              <select required name="gender" id="cuttingGenderSelect">
+                <option value="" disabled selected>Select gender&hellip;</option>
+                <option value="boys">Boys</option>
+                <option value="girls">Girls</option>
+              </select>
+              <small class="gender-auto-hint" id="genderAutoHint" hidden>Auto-filled from SKU/name &mdash; change if wrong.</small>
+            </label>
+            <label>Date<span class="req">*</span> <input required name="entryDate" type="date"></label>
+            <label>Correction factor (%)<span class="req">*</span> <input required name="correctionPercent" type="number" min="0" step="0.1" value="5"></label>
+          </div>
         </div>
-        <div class="fabric-components-section">
+        <div class="fabric-components-section fabrics-block">
           <div class="fabric-components-header">
             <span>Fabrics used<span class="req">*</span> <small>Search by style/nickname, fabric name, print, colour, or code. Add a row per fabric for coord sets, panels, or trims cut from a different roll.</small></span>
             <button class="secondary-action" type="button" id="addFabricRowBtn">
@@ -404,7 +411,7 @@
           </div>
           <div id="fabricComponentsContainer"></div>
         </div>
-        <div class="fabric-components-section" id="garmentComponentsSection">
+        <div class="fabric-components-section garments-block" id="garmentComponentsSection">
           <div class="fabric-components-header">
             <span>Garments produced<span class="req">*</span> <small>Add a row per garment cut together from this fabric (e.g. Kurta + Pant cut as a set) and enter that garment's own size split. For a set cut from a shared roll, the fabric average you entered above already covers the whole set (e.g. Kurta + Pant together) &mdash; it's applied once per set, not once per garment, so it is never double-counted. Saving creates a separate batch per garment, so downstream stitching, accessories, and stock all track them individually.</small></span>
             <button class="secondary-action" type="button" id="addGarmentRowBtn">
@@ -440,7 +447,7 @@
             <tr>
               <th>Batch</th>
               <th>SKU</th>
-              <th>Name</th>
+              <th class="col-name">Name</th>
               <th>Garment</th>
               <th>Date</th>
               <th>Gender</th>

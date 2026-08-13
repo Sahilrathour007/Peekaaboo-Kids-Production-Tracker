@@ -1608,7 +1608,7 @@ function renderCuttingRows() {
       <tr>
         <td><span class="code-pill">${cutting.batchCode}</span></td>
         <td>${cutting.sku}</td>
-        <td>${cutting.commonName}</td>
+        <td class="col-name" title="${escapeHtml(cutting.commonName)}">${cutting.commonName}</td>
         <td>
           <div>${escapeHtml(garmentDisplayLabel(cutting))}</div>
           ${cutting.cutGroupId ? `<small class="set-badge">Set with ${escapeHtml(getSetSiblings(cutting).map(garmentDisplayLabel).join(", ") || "\u2014")}</small>` : ""}
@@ -2898,6 +2898,43 @@ function labelGender(gender) {
   return GENDERS.find(([value]) => value === gender)?.[1] || gender || "\u2014";
 }
 
+// SKUs and common names almost always carry the gender in plain text
+// somewhere ("Pathan Boys kurta jacket set", "London Girl Set - Pink") —
+// so rather than making the operator pick it every time, guess it from
+// whatever's already been typed. Word-boundary match so "Boyd" or
+// "Girly" (fabric/print names) don't false-positive. Returns null when
+// neither word appears, or when both do (genuinely ambiguous), so the
+// caller falls back to requiring a manual pick instead of guessing wrong.
+function detectGenderFromText(text) {
+  const value = String(text || "");
+  const hasBoys = /\bboys?\b/i.test(value);
+  const hasGirls = /\bgirls?\b/i.test(value);
+  if (hasBoys && !hasGirls) return "boys";
+  if (hasGirls && !hasBoys) return "girls";
+  return null;
+}
+
+// Runs the gender guess against the cutting form's current common
+// name + SKU text and, if it finds an unambiguous match, sets the
+// gender select and shows the "auto-filled" hint. Never clears a
+// gender the operator has already picked by hand — a fresh strong
+// signal overwrites it, but a miss just leaves things alone.
+function autoDetectCuttingGender(form) {
+  // Once the operator has picked a gender themselves (a genuine "change"
+  // on the select — see its listener in bindEvents), that's their call;
+  // further typing in the name/SKU fields shouldn't silently flip it.
+  if (form.gender.dataset.userSet === "1") return;
+  const guess = detectGenderFromText(`${form.commonName.value} ${form.sku.value}`);
+  const hint = $("#genderAutoHint");
+  if (guess) {
+    form.gender.value = guess;
+    clearFieldInvalid(form.gender);
+    if (hint) hint.hidden = false;
+  } else if (hint) {
+    hint.hidden = true;
+  }
+}
+
 function updateCuttingPreview() {
   const { components, totalUsed, totalCorrection } = getCuttingCalculation();
   components.forEach((entry) => updateFabricRowAvailability(entry.row, entry.fabric));
@@ -3037,9 +3074,7 @@ function addGarmentComponentRow(type = "", label = "") {
         ${GARMENT_TYPE_OPTIONS.map(([value, text]) => `<option value="${value}"${value === type ? " selected" : ""}>${text}</option>`).join("")}
       </select>
     </label>
-    <label>Label (optional)
-      <input data-role="garmentLabel" autocomplete="off" placeholder="e.g. Kurta" value="${escapeHtml(label)}">
-    </label>
+    <input type="hidden" data-role="garmentLabel" value="${escapeHtml(label)}">
     <button class="icon-button danger" type="button" data-remove-garment-row aria-label="Remove this garment" data-tooltip="Remove">
       <i data-lucide="trash-2" aria-hidden="true"></i>
     </button>
@@ -3133,6 +3168,7 @@ function applySkuToForm(form, skuRecord) {
       if (guessedType) rows[0].querySelector('[data-role="garmentType"]').value = guessedType;
     }
     populateFabricRowsFromSku(skuRecord);
+    autoDetectCuttingGender(form);
   }
 }
 
@@ -3403,13 +3439,39 @@ function bindEvents() {
   addEstimationGarmentRow();
 
   $("#cuttingForm").commonName.addEventListener("change", (event) => {
-    applySkuToForm(event.currentTarget.form, findSkuByCommonName(event.target.value));
+    const form = event.currentTarget.form;
+    applySkuToForm(form, findSkuByCommonName(event.target.value));
+    autoDetectCuttingGender(form);
     updateCuttingPreview();
   });
 
   $("#cuttingForm").sku.addEventListener("change", (event) => {
-    applySkuToForm(event.currentTarget.form, findSkuByCode(event.target.value));
+    const form = event.currentTarget.form;
+    applySkuToForm(form, findSkuByCode(event.target.value));
+    autoDetectCuttingGender(form);
     updateCuttingPreview();
+  });
+
+  // Also catch it while typing (not just on blur/change) so a new style
+  // that doesn't exist in the SKU database yet — nothing to applySkuToForm
+  // match against — still gets its gender guessed as soon as "Boys"/"Girls"
+  // appears in the name.
+  $("#cuttingForm").commonName.addEventListener("input", (event) => {
+    autoDetectCuttingGender(event.currentTarget.form);
+  });
+
+  $("#cuttingForm").sku.addEventListener("input", (event) => {
+    autoDetectCuttingGender(event.currentTarget.form);
+  });
+
+  // Once the operator touches the gender select themselves, treat it as
+  // their call — stop overwriting it on subsequent name/SKU edits, and
+  // hide the "auto-filled" hint since it no longer applies.
+  $("#cuttingGenderSelect").addEventListener("change", (event) => {
+    event.currentTarget.dataset.userSet = "1";
+    const hint = $("#genderAutoHint");
+    if (hint) hint.hidden = true;
+    clearFieldInvalid($("#cuttingGenderSelect"));
   });
 
   $("#estimationForm").commonName.addEventListener("change", (event) => {
@@ -3457,6 +3519,20 @@ function bindEvents() {
     event.preventDefault();
     const form = event.currentTarget;
     clearAllInvalid(form);
+
+    // Gender is required and, per the new auto-detect behaviour, no longer
+    // defaults to anything — a style whose name/SKU didn't contain "boys"
+    // or "girls" (or contained both, ambiguously) leaves the select on its
+    // blank placeholder. Block the save here rather than relying on the
+    // native required-field popup, so it's caught in the same pass as the
+    // fabric/garment checks below and highlighted the same way.
+    if (!form.gender.value) {
+      markFieldInvalid(form.gender);
+      alert("Select a gender before saving \u2014 it couldn't be auto-detected from the common name or SKU.");
+      form.gender.focus();
+      return;
+    }
+
     const { components, totalUsed, totalCorrection } = getCuttingCalculation();
     const fabricRows = readFabricComponentRows();
 
@@ -3556,6 +3632,8 @@ function bindEvents() {
     form.reset();
     form.correctionPercent.value = 5;
     form.entryDate.value = todayDate();
+    delete form.gender.dataset.userSet;
+    $("#genderAutoHint").hidden = true;
     clearFabricComponentRows();
     addFabricComponentRow();
     clearGarmentComponentRows();
