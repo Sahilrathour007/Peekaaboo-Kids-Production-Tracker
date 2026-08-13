@@ -1328,6 +1328,14 @@ button:focus-visible {
   gap: 8px;
 }
 
+.accessory-stock-form {
+  margin-bottom: 28px;
+}
+
+.accessory-balance-shell {
+  margin-bottom: 8px;
+}
+
 .cutting-table-actions {
   display: flex;
   gap: 10px;

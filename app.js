@@ -1497,7 +1497,6 @@ function renderAll() {
   renderOutsourcingRows();
   renderIncomingMaterialRows();
   renderAccessoryRows();
-  renderAccessoryStockRows();
   renderAccessoryStockBalance();
   renderStats();
   updateCuttingPreview();
@@ -2672,25 +2671,6 @@ function renderAccessoryRows() {
       `;
     }).join("")
     : emptyRow(7);
-}
-
-function renderAccessoryStockRows() {
-  $("#accessoryStockRows").innerHTML = state.accessoryStock.length
-    ? state.accessoryStock.slice().reverse().map((entry) => `
-      <tr>
-        <td><span class="stage-pill">${accessoryTypeLabel(entry.accessoryType)}</span></td>
-        <td>${entry.accessoryType === "other" ? escapeHtml(entry.label) : "&mdash;"}</td>
-        <td>${entry.sku ? `${escapeHtml(entry.sku)}${entry.commonName ? ` (${escapeHtml(entry.commonName)})` : ""}` : "General stock"}</td>
-        <td>${formatDate(entry.date)}</td>
-        <td class="num">${formatQty(entry.qty)}</td>
-        <td class="num">
-          <button class="icon-button danger" type="button" data-delete-accessory-stock="${entry.id}" aria-label="Delete stock entry" data-tooltip="Delete">
-            <i data-lucide="trash-2" aria-hidden="true"></i>
-          </button>
-        </td>
-      </tr>
-    `).join("")
-    : emptyRow(6);
 }
 
 function renderAccessoryStockBalance() {

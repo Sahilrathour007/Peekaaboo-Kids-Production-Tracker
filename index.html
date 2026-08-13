@@ -701,11 +701,11 @@
     <section class="tab-panel" id="accessoriesPanel">
       <div class="section-heading">
         <div>
-          <h2>Accessory stock</h2>
-          <p>Log accessory purchases and see received vs. required (from accessory rules) at a glance.</p>
+          <h2>Stock balance</h2>
+          <p>Log accessory purchases below, then see received vs. required (from accessory rules) at a glance. "Other" accessories aren't rule-linked, so required shows as &mdash; (track manually).</p>
         </div>
       </div>
-      <form class="form-grid compact" id="accessoryStockForm">
+      <form class="form-grid compact accessory-stock-form" id="accessoryStockForm">
         <label>Accessory type<span class="req">*</span>
           <select required name="accessoryType" id="accessoryStockType">
             <option value="elastic">Elastic</option>
@@ -721,29 +721,7 @@
           Add stock
         </button>
       </form>
-      <div class="table-shell">
-        <table>
-          <thead>
-            <tr>
-              <th>Type</th>
-              <th>Name</th>
-              <th>Linked to</th>
-              <th>Date</th>
-              <th class="num">Qty received</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="accessoryStockRows"></tbody>
-        </table>
-      </div>
-
-      <div class="section-heading" style="margin-top: 28px;">
-        <div>
-          <h2>Stock balance</h2>
-          <p>Received minus required, using accessory rules against all open batches. "Other" accessories aren't rule-linked, so required shows as &mdash; (track manually).</p>
-        </div>
-      </div>
-      <div class="table-shell">
+      <div class="table-shell accessory-balance-shell">
         <table>
           <thead>
             <tr>
@@ -757,7 +735,9 @@
         </table>
       </div>
 
-      <div class="section-heading" style="margin-top: 28px;">
+      <div class="section-divider"></div>
+
+      <div class="section-heading">
         <div>
           <h2>Accessory requirement by batch</h2>
           <p>Each cutting entry calculates requirements from total pieces and garment type.</p>
