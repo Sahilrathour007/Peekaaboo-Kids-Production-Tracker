@@ -337,7 +337,7 @@
           </div>
           <div class="fabric-row-legend estimation-row-legend" aria-hidden="true">
             <span>Fabric</span>
-            <span>Avg used/piece (cm)<span class="req">*</span></span>
+            <span>Avg used/piece<span class="req">*</span></span>
             <span>Needed</span>
             <span>In stock</span>
             <span>Status</span>
@@ -374,7 +374,7 @@
       <div class="section-heading">
         <div>
           <h2>Cutting schedule</h2>
-          <p>Record size output, fabric used, correction factor, and route the batch after cutting. Pick a common name or SKU below and matching fabric row(s) fill in automatically for styles that already exist &mdash; add or edit rows for anything new or multi-fabric.</p>
+          <p>Record size output, fabric used, correction, and route the batch after cutting. Pick a common name or SKU below and matching fabric row(s) fill in automatically for styles that already exist &mdash; add or edit rows for anything new or multi-fabric.</p>
         </div>
       </div>
       <form class="cutting-layout" id="cuttingForm">
@@ -394,7 +394,7 @@
               <small class="gender-auto-hint" id="genderAutoHint" hidden>Auto-filled from SKU/name &mdash; change if wrong.</small>
             </label>
             <label>Date<span class="req">*</span> <input required name="entryDate" type="date"></label>
-            <label>Correction factor (%)<span class="req">*</span> <input required name="correctionPercent" type="number" min="0" step="0.1" value="5"></label>
+            <label>Correction (m)<span class="req">*</span> <input required name="correctionMeters" type="number" min="0" step="0.1" value="0"></label>
           </div>
         </div>
         <div class="fabric-components-section fabrics-block">
@@ -407,7 +407,7 @@
           </div>
           <div class="fabric-row-legend" aria-hidden="true">
             <span>Fabric<span class="req">*</span></span>
-            <span>Avg used/piece (cm)<span class="req">*</span></span>
+            <span>Avg used/piece<span class="req">*</span></span>
             <span>Print</span>
             <span>Colour</span>
             <span></span>

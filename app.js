@@ -1160,7 +1160,13 @@ function renderEstimationRows() {
         <strong>${escapeHtml(req.name || "\u2014")}</strong>
         <small>${escapeHtml([req.printType, req.colour].filter(Boolean).join(" / ") || "\u2014")}</small>
       </div>
-      <input class="fabric-avg-used" data-role="avgUsed" type="number" min="0.1" step="0.1" placeholder="cm/piece \u2014 required">
+      <div class="avg-used-group">
+        <input class="fabric-avg-used" data-role="avgUsed" type="number" min="0.01" step="0.1" placeholder="Avg used/piece \u2014 required">
+        <select class="avg-used-unit" data-role="avgUsedUnit" aria-label="Unit">
+          <option value="cm" selected>cm</option>
+          <option value="m">m</option>
+        </select>
+      </div>
       <span data-role="needed">\u2014</span>
       <span data-role="available">\u2014</span>
       <span class="estimation-status pending" data-role="status">\u2014</span>
@@ -1185,7 +1191,9 @@ function updateEstimationCalc() {
   $$(".estimation-row").forEach((row) => {
     anyRows = true;
     const req = estimationRequirements[Number(row.dataset.index)];
-    const avgUsedCm = toNumber(row.querySelector('[data-role="avgUsed"]').value);
+    const avgUsedRaw = toNumber(row.querySelector('[data-role="avgUsed"]').value);
+    const avgUsedUnit = row.querySelector('[data-role="avgUsedUnit"]')?.value || "cm";
+    const avgUsedCm = avgUsedUnit === "m" ? avgUsedRaw * 100 : avgUsedRaw;
     const needed = (avgUsedCm / 100) * pieces;
     const { available, rollCount } = totalAvailableFabricStock(req.name, req.printType, req.colour);
     const neededKnown = avgUsedCm > 0 && pieces > 0;
@@ -1433,7 +1441,14 @@ function readFabricComponentRows() {
   return $$(".fabric-component-row").map((row) => {
     const code = row.dataset.fabricCode || "";
     const fabric = state.fabrics.find((item) => item.code === code) || null;
-    const avgFabricUsed = toNumber(row.querySelector('[data-role="avgUsed"]').value);
+    const rawValue = toNumber(row.querySelector('[data-role="avgUsed"]').value);
+    const unit = row.querySelector('[data-role="avgUsedUnit"]')?.value || "cm";
+    // avgFabricUsed is stored/displayed in centimetres everywhere else (CSV
+    // export, fabric usage sheet, SKU database prefill) — the operator can
+    // type the value in either cm or m via the unit dropdown, but it's
+    // normalized to cm the moment it's read here so nothing downstream needs
+    // to know which unit was actually typed.
+    const avgFabricUsed = unit === "m" ? rawValue * 100 : rawValue;
     return { row, fabric, fabricCode: code, avgFabricUsed };
   });
 }
@@ -1444,17 +1459,27 @@ function getCuttingCalculation() {
   // garment's pieces — see getSetPieces for why summing would double-count
   // a shared roll across a Kurta+Pant set.
   const pieces = getSetPieces(readGarmentComponentRows());
-  const correctionPercent = toNumber(form.correctionPercent.value);
-  const components = readFabricComponentRows().map((entry) => {
-    // avgFabricUsed is entered in centimetres per piece, but fabric stock
-    // (totalLength/consumed/remaining) is tracked in metres — divide by 100
-    // here so "used" lines up with the metre-based fabric figures. This is
-    // the only place the cm value crosses into metres; avgFabricUsed itself
-    // stays in cm everywhere else (display, storage) as entered.
+  // Correction is now an absolute figure in metres, entered directly by the
+  // operator (it used to be a % of each fabric roll's total length). With a
+  // single flat figure but possibly several fabric rows (coord sets, trims),
+  // it's split across components in proportion to how much fabric each one
+  // actually used — the same "prorate by share" approach used elsewhere for
+  // splitting batches, so the components' correction always sums back to
+  // exactly the entered total.
+  const correctionMeters = toNumber(form.correctionMeters.value);
+  const rawComponents = readFabricComponentRows().map((entry) => {
+    // avgFabricUsed is normalized to centimetres per piece above, but fabric
+    // stock (totalLength/consumed/remaining) is tracked in metres — divide
+    // by 100 here so "used" lines up with the metre-based fabric figures.
     const used = (entry.avgFabricUsed / 100) * pieces;
-    const correction = (toNumber(entry.fabric?.totalLength) * correctionPercent) / 100;
-    const remaining = toNumber(entry.fabric?.totalLength) - toNumber(entry.fabric?.consumed) - used - correction;
-    return { ...entry, used, correction, remaining };
+    return { ...entry, used };
+  });
+  const totalUsedRaw = rawComponents.reduce((sum, c) => sum + c.used, 0);
+  const components = rawComponents.map((entry) => {
+    const share = totalUsedRaw > 0 ? entry.used / totalUsedRaw : 0;
+    const correction = correctionMeters * share;
+    const remaining = toNumber(entry.fabric?.totalLength) - toNumber(entry.fabric?.consumed) - entry.used - correction;
+    return { ...entry, correction, remaining };
   });
   const totalUsed = components.reduce((sum, c) => sum + c.used, 0);
   const totalCorrection = components.reduce((sum, c) => sum + c.correction, 0);
@@ -3076,7 +3101,13 @@ function addFabricComponentRow(fabricCode = "", avgUsed = "", required = null) {
   wrapper.dataset.fabricCode = fabricCode;
   wrapper.innerHTML = `
     <input class="fabric-search" data-role="search" autocomplete="off" placeholder="Search style/nickname, fabric name, print, colour, or code">
-    <input class="fabric-avg-used" data-role="avgUsed" type="number" min="0.1" step="0.1" placeholder="Avg used/piece (cm) \u2014 required" value="${avgUsed}">
+    <div class="avg-used-group">
+      <input class="fabric-avg-used" data-role="avgUsed" type="number" min="0.01" step="0.1" placeholder="Avg used/piece \u2014 required" value="${avgUsed}">
+      <select class="avg-used-unit" data-role="avgUsedUnit" aria-label="Unit">
+        <option value="cm" selected>cm</option>
+        <option value="m">m</option>
+      </select>
+    </div>
     <input class="fabric-print" data-role="printType" readonly placeholder="Print">
     <input class="fabric-colour" data-role="colour" readonly placeholder="Colour">
     <button class="icon-button danger" type="button" data-remove-fabric-row aria-label="Remove this fabric" data-tooltip="Remove">
@@ -3448,6 +3479,11 @@ function bindEvents() {
   });
 
   $("#cuttingForm").addEventListener("input", updateCuttingPreview);
+  // The cm/m unit <select> on each fabric row isn't reliably caught by
+  // "input" in every browser — "change" always fires on selection.
+  $("#cuttingForm").addEventListener("change", (event) => {
+    if (event.target.dataset.role === "avgUsedUnit") updateCuttingPreview();
+  });
 
   // Delegated: fires when an autocomplete commit sets a fabric-search
   // input's value to a fabric code (attachAutocomplete dispatches
@@ -3579,15 +3615,14 @@ function bindEvents() {
     applySkuToEstimationForm(findSkuByCode(event.target.value));
   });
 
+  const ESTIMATION_LIVE_ROLES = new Set(["avgUsed", "avgUsedUnit", "garmentPieces", "garmentType", "garmentLabel"]);
   $("#estimationForm").addEventListener("input", (event) => {
-    if (
-      event.target.dataset.role === "avgUsed" ||
-      event.target.dataset.role === "garmentPieces" ||
-      event.target.dataset.role === "garmentType" ||
-      event.target.dataset.role === "garmentLabel"
-    ) {
-      updateEstimationCalc();
-    }
+    if (ESTIMATION_LIVE_ROLES.has(event.target.dataset.role)) updateEstimationCalc();
+  });
+  // Unit <select> changes are reliably caught by "change" (some browsers
+  // don't fire "input" for selects), so listen for both.
+  $("#estimationForm").addEventListener("change", (event) => {
+    if (ESTIMATION_LIVE_ROLES.has(event.target.dataset.role)) updateEstimationCalc();
   });
 
   $("#addEstimationGarmentRowBtn").addEventListener("click", () => {
@@ -3715,7 +3750,7 @@ function bindEvents() {
           used: entry.used * share,
           correction: entry.correction * share
         })),
-        correctionPercent: toNumber(form.correctionPercent.value),
+        correctionMeters: toNumber(form.correctionMeters.value),
         fabricUsed: totalUsed * share,
         correction: totalCorrection * share,
         sizes: garment.sizes,
@@ -3727,7 +3762,7 @@ function bindEvents() {
 
     saveState();
     form.reset();
-    form.correctionPercent.value = 5;
+    form.correctionMeters.value = 0;
     form.entryDate.value = todayDate();
     delete form.gender.dataset.userSet;
     $("#genderAutoHint").hidden = true;
