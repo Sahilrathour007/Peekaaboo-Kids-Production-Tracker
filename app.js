@@ -1450,7 +1450,6 @@ function renderAll() {
   renderCuttingRows();
   renderStagePanels();
   renderPendingOutsourcingBoard();
-  renderVendorOutsourcingBoard();
   renderOutsourcingRows();
   renderIncomingMaterialRows();
   renderAccessoryRows();
@@ -1833,57 +1832,6 @@ function renderStagePanels() {
   });
 }
 
-// "Vendor outsourcing" board: every outsourcing order that's still open
-// (not yet fully received), across EVERY work type — Stitching,
-// Kaaj/Button, Handwork, Dhaga Cutting — not just batches whose cutting.stage
-// happens to be "Outsource stitching". Kaaj/Button and Handwork batches
-// auto-advance their stage the moment they're fully outsourced (see
-// AUTO_ADVANCE_ON_FULL_OUTSOURCE), so relying on stage alone silently
-// dropped those orders from this view even while they were still genuinely
-// out with a vendor. Reading straight off state.outsourcing instead means
-// an order shows up here the instant it's placed and drops off the instant
-// it's fully received, independent of whatever the source batch's stage
-// has moved on to.
-function renderVendorOutsourcingBoard() {
-  const container = document.getElementById("outsourcingVendorBoard");
-  if (!container) return;
-  const open = pendingOutsourcingEntries();
-  container.innerHTML = open.length
-    ? sortOutsourcingRecent(open).map(renderVendorOutsourcingCard).join("")
-    : '<p class="empty">Nothing currently out with a vendor.</p>';
-}
-
-function renderVendorOutsourcingCard(entry) {
-  const totalPieces = getPieces(entry.sizes);
-  const receivedPieces = getOutsourcingReceivedQty(entry);
-  const pendingPieces = getOutsourcingPendingQty(entry);
-  const sourceCutting = entry.sourceCuttingId
-    ? state.cuttings.find((item) => item.id === entry.sourceCuttingId)
-    : null;
-  return `
-    <article class="batch-card">
-      <div>
-        <strong><span class="stage-pill">${escapeHtml(entry.workType)}</span> ${entry.commonName}</strong>
-        <small>${sourceCutting ? `${sourceCutting.batchCode} | ` : ""}${entry.sku}</small>
-        <small>Vendor: ${entry.vendorName}</small>
-      </div>
-      <div class="mini-grid">
-        <span>Ordered <b>${formatQty(totalPieces)}</b></span>
-        <span>Sizes <b>${formatSizeBreakdown(entry.sizes) || "&mdash;"}</b></span>
-        ${receivedPieces > 0 ? `<span>Received <b>${formatQty(receivedPieces)}</b></span>` : ""}
-        <span>Pending <b>${formatQty(pendingPieces)}</b></span>
-        <span>Delivery <b>${formatDate(entry.pendingDeliveryDate || entry.deliveryDate)}</b></span>
-      </div>
-      <div class="row-actions">
-        <button class="secondary-action" type="button" data-log-receipt="${entry.id}">Log receipt</button>
-        <button class="icon-button danger" type="button" data-delete-outsourcing="${entry.id}" aria-label="Delete outsourcing entry" data-tooltip="Delete">
-          <i data-lucide="trash-2" aria-hidden="true"></i>
-        </button>
-      </div>
-    </article>
-  `;
-}
-
 function renderBatchCard(cutting) {
   const totalPieces = getPieces(cutting.sizes);
   const remainingPieces = getRemainingPieces(cutting);
@@ -2107,9 +2055,10 @@ function renderOutsourcingRows() {
           <div>${formatQty(getPieces(entry.sizes))}</div>
           <small class="size-breakdown">${formatSizeBreakdown(entry.sizes) || "&mdash;"}</small>
         </td>
-        <td>${entry.deliveryDate}</td>
-        <td>${formatAccessories(entry.accessories)}</td>
+        <td class="num">${formatQty(getOutsourcingPendingQty(entry))}</td>
         <td>${formatDate((entry.createdAt || "").slice(0, 10))}</td>
+        <td>${formatDate(entry.pendingDeliveryDate || entry.deliveryDate)}</td>
+        <td>${formatAccessories(entry.accessories)}</td>
         <td class="num">
           <button class="icon-button danger" type="button" data-delete-outsourcing="${entry.id}" aria-label="Delete outsourcing entry" data-tooltip="Delete">
             <i data-lucide="trash-2" aria-hidden="true"></i>
@@ -2117,7 +2066,7 @@ function renderOutsourcingRows() {
         </td>
       </tr>
     `).join("")
-    : emptyRow(9);
+    : emptyRow(10);
 }
 
 // Fill these in once with your real business details — they're reused on

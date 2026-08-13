@@ -543,12 +543,6 @@
       </div>
 
       <div class="outsourcing-subview" id="outsourcingVendorView">
-        <div class="fabric-components-section">
-          <div class="fabric-components-header">
-            <span>Out with vendor<small>Every open outsourcing order — Stitching, Kaaj/Button, Handwork, Dhaga Cutting — waiting to come back. Log a receipt once it does.</small></span>
-          </div>
-          <div class="stage-board" id="outsourcingVendorBoard"></div>
-        </div>
         <form class="cutting-layout" id="outsourcingForm">
           <div class="source-hint" id="outsourcingHint" hidden>
             <span id="outsourcingHintText"></span>
@@ -596,7 +590,7 @@
         <div class="section-heading" style="margin-top: 20px;">
           <div>
             <h2>Open orders</h2>
-            <p>Only orders not yet fully received. Once an order is fully received against it in Incoming material, it drops off this list &mdash; it still lives in Incoming material's full history.</p>
+            <p>Every outsourcing order still out with a vendor — Stitching, Kaaj/Button, Handwork, Dhaga Cutting — with what's still pending and when it's due back. Once fully received in Incoming material, it drops off this list.</p>
           </div>
         </div>
         <div class="table-shell">
@@ -608,9 +602,10 @@
                 <th>SKU</th>
                 <th>Name</th>
                 <th class="num">Ordered qty</th>
+                <th class="num">Pending qty</th>
+                <th>Outsourced on</th>
                 <th>Delivery</th>
                 <th>Accessories</th>
-                <th>Created</th>
                 <th></th>
               </tr>
             </thead>
