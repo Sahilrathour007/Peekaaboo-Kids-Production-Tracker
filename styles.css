@@ -1411,9 +1411,8 @@ tr:last-child td {
 
 .stage-board {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  align-items: start;
-  gap: 12px;
+  grid-template-columns: 1fr;
+  gap: 8px;
 }
 
 .stage-column {
@@ -1433,12 +1432,19 @@ tr:last-child td {
 }
 
 .batch-card {
-  display: grid;
-  gap: 8px;
-  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  padding: 10px 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
+}
+
+.batch-card > div:first-child {
+  flex: 1 1 220px;
+  min-width: 180px;
 }
 
 .batch-card strong {
@@ -1452,6 +1458,7 @@ tr:last-child td {
 
 .batch-card .row-actions {
   gap: 6px;
+  flex: 0 0 auto;
 }
 
 .batch-card .secondary-action {
@@ -1460,9 +1467,11 @@ tr:last-child td {
 }
 
 .mini-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
+  flex: 1 1 220px;
   color: var(--muted);
   font-size: 13px;
 }
@@ -1472,16 +1481,22 @@ tr:last-child td {
 }
 
 /* Sizes can list every bucket at once (1-2, 2-3, 3-4, 4-5, 5-6, 6-8,
-   8-10 yr all filled on one batch) — that's too long to share a half-width
-   column with "Pieces" without wrapping into a cramped mess, so it gets the
-   full row width and a bigger, easier-to-read size. */
+   8-10 yr all filled on one batch). Cards are now full-width rows with
+   plenty of horizontal room, so it sits inline next to Pieces at a
+   readable size instead of needing its own dedicated row. */
 .sizes-line {
-  grid-column: 1 / -1;
-  font-size: 15px;
+  font-size: 14px;
 }
 
-.sizes-line b {
-  font-size: 15px;
+@media (max-width: 760px) {
+  .batch-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .batch-card .row-actions {
+    flex: 1 1 auto;
+  }
 }
 
 @media (max-width: 980px) {
