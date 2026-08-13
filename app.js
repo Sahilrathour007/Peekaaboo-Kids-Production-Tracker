@@ -941,7 +941,6 @@ function bindAutocompletes() {
   attachAutocomplete($("#estimationForm").sku, skuOptions);
   attachAutocomplete($("#outsourcingForm").commonName, commonNameOptions);
   attachAutocomplete($("#outsourcingForm").sku, skuOptions);
-  attachAutocomplete($("#accessoryStockForm").sku, skuOptions);
 }
 
 function makeFabricCode(fabric) {
@@ -3800,11 +3799,6 @@ function bindEvents() {
     event.preventDefault();
     const form = event.currentTarget;
     clearAllInvalid(form);
-    if (form.accessoryType.value === "other" && !form.label.value.trim()) {
-      markFieldInvalid(form.label);
-      alert('Please name this "Other" accessory (e.g. Lace, Dori).');
-      return;
-    }
     // qty has `required` + min="0" in the HTML, which lets a literal 0
     // through native validation — this catches that case explicitly.
     if (!(toNumber(form.qty.value) > 0)) {
@@ -3812,14 +3806,12 @@ function bindEvents() {
       alert("Enter a quantity received greater than 0 before saving.");
       return;
     }
-    const sku = form.sku.value.trim();
-    const skuRecord = sku ? findSkuByCode(sku) : null;
     state.accessoryStock.push({
       id: crypto.randomUUID(),
       accessoryType: form.accessoryType.value,
-      label: form.accessoryType.value === "other" ? form.label.value.trim() : accessoryTypeLabel(form.accessoryType.value),
-      sku,
-      commonName: skuRecord?.commonName || "",
+      label: accessoryTypeLabel(form.accessoryType.value),
+      sku: "",
+      commonName: "",
       qty: toNumber(form.qty.value),
       date: form.date.value
     });
