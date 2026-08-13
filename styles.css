@@ -1029,6 +1029,8 @@ input::placeholder {
 input[readonly] {
   background: var(--soft);
   color: var(--muted);
+  font-weight: 400;
+  opacity: 0.7;
   cursor: default;
 }
 
