@@ -18,6 +18,11 @@
   --danger: #b42318;
   --success: #027a48;
   --shadow: 0 10px 30px rgba(16, 24, 40, 0.08);
+  /* Single control-height token so every interactive element in a row —
+     icon buttons, primary/secondary actions, tabs, the sync pill, inputs,
+     and selects — lines up on the same baseline instead of drifting by a
+     few px depending on which component it happens to be. */
+  --ctrl-h: 40px;
 }
 
 * {
@@ -99,10 +104,14 @@ main {
 }
 
 .sync-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 128px;
+  min-height: var(--ctrl-h);
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 8px 10px;
+  padding: 8px 14px;
   color: var(--muted);
   background: var(--surface);
   font-size: 13px;
@@ -136,7 +145,7 @@ main {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 38px;
+  min-height: var(--ctrl-h);
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
@@ -145,7 +154,7 @@ main {
 }
 
 .icon-button {
-  width: 40px;
+  width: var(--ctrl-h);
   padding: 0;
   position: relative;
 }
@@ -346,7 +355,7 @@ main {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 34px;
+  min-height: var(--ctrl-h);
   padding: 7px 14px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -919,7 +928,7 @@ label {
 input,
 select {
   width: 100%;
-  min-height: 42px;
+  min-height: var(--ctrl-h);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 9px 12px;
@@ -928,9 +937,16 @@ select {
   font-size: 14px;
 }
 
+/* Auto-filled fields (fabric code, total length, print/colour pulled from
+   the fabric picker, etc.) get their own treatment so it's obvious at a
+   glance which boxes fill themselves in versus which ones need the
+   person to type something — distinct from both a plain editable field
+   and a field-invalid error state. */
 input[readonly] {
   background: var(--soft);
+  border-left: 3px solid var(--accent);
   color: var(--muted);
+  cursor: default;
 }
 
 input:focus,
