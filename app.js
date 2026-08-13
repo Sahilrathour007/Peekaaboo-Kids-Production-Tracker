@@ -1923,7 +1923,7 @@ function renderBatchCard(cutting) {
       </div>
       <div class="mini-grid">
         <span>Pieces <b>${formatQty(totalPieces)}</b></span>
-        <span>Sizes <b>${formatSizeBreakdown(cutting.sizes) || "&mdash;"}</b></span>
+        <span class="sizes-line">Sizes <b>${formatSizeBreakdown(cutting.sizes) || "&mdash;"}</b></span>
         ${outsourcedPieces > 0 ? `<span>Outsourced <b>${formatQty(outsourcedPieces)}</b></span><span>Available <b>${formatQty(remainingPieces)}</b></span>` : ""}
         ${cutting.stage === "Finished Goods" && cutting.finishedGoodsDate ? `<span>In stock since <b>${formatDate(cutting.finishedGoodsDate)}</b></span>` : ""}
       </div>

@@ -1460,6 +1460,19 @@ tr:last-child td {
   color: var(--ink);
 }
 
+/* Sizes can list every bucket at once (1-2, 2-3, 3-4, 4-5, 5-6, 6-8,
+   8-10 yr all filled on one batch) — that's too long to share a half-width
+   column with "Pieces" without wrapping into a cramped mess, so it gets the
+   full row width and a bigger, easier-to-read size. */
+.sizes-line {
+  grid-column: 1 / -1;
+  font-size: 15px;
+}
+
+.sizes-line b {
+  font-size: 15px;
+}
+
 @media (max-width: 980px) {
   .stats-grid,
   .form-grid,
