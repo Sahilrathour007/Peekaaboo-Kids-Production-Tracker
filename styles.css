@@ -1065,6 +1065,24 @@ main {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+/* Vendor outsourcing form: work type + vendor name on their own row, then
+   SKU / common name / delivery date on the next, instead of letting a
+   4-column grid wrap the fifth field onto a lonely row by itself. */
+.outsourcing-row-1 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.outsourcing-row-2 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 620px) {
+  .outsourcing-row-1,
+  .outsourcing-row-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
 .cutting-layout {
   grid-template-columns: 1fr;
 }
@@ -1273,7 +1291,6 @@ button:focus-visible {
 }
 
 .source-hint {
-  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -1286,6 +1303,12 @@ button:focus-visible {
   font-weight: 650;
 }
 
+/* [hidden] must win over the flex layout above, otherwise the box (and its
+   empty "Clear link" button) stays visible even when no batch is linked. */
+.source-hint:not([hidden]) {
+  display: flex;
+}
+
 .source-hint .secondary-action {
   min-height: 30px;
   padding: 4px 10px;
@@ -1294,6 +1317,15 @@ button:focus-visible {
 
 .calculation-strip span {
   color: #345;
+}
+
+/* Cells that hold more than one icon-button (e.g. print + delete on an
+   outsourcing row) so the buttons sit with a small gap instead of touching. */
+.row-actions-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .cutting-table-actions {

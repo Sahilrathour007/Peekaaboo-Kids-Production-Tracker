@@ -562,7 +562,7 @@
             <button type="button" class="secondary-action" id="clearSourceLink">Clear link</button>
           </div>
           <input type="hidden" name="sourceCuttingId" value="">
-          <div class="form-grid compact">
+          <div class="form-grid compact outsourcing-row-1">
             <label>Work type<span class="req">*</span>
               <select required name="workType">
                 <option value="Stitching">Stitching</option>
@@ -571,8 +571,10 @@
               </select>
             </label>
             <label>Vendor name<span class="req">*</span> <input required name="vendorName" autocomplete="off" placeholder="Vendor name"></label>
-            <label>Common name<span class="req">*</span> <input required name="commonName" autocomplete="off" placeholder="London Pink"></label>
+          </div>
+          <div class="form-grid compact outsourcing-row-2">
             <label>SKU code<span class="req">*</span> <input required name="sku" autocomplete="off" placeholder="19DoFoLoSoI"></label>
+            <label>Common name<span class="req">*</span> <input required name="commonName" autocomplete="off" placeholder="London Pink"></label>
             <label>Delivery date<span class="req">*</span> <input required name="deliveryDate" type="date"></label>
           </div>
           <fieldset class="size-grid">
@@ -590,7 +592,8 @@
             <label>Elastic <input name="elastic" type="number" min="0" step="1" value="0"></label>
             <label>Button <input name="button" type="number" min="0" step="1" value="0"></label>
             <label>Tag <input name="tag" type="number" min="0" step="1" value="0"></label>
-            <label>Other <input name="otherAccessory" autocomplete="off" placeholder="Lace, dori, etc."></label>
+            <label>Other name <input name="otherAccessory" autocomplete="off" placeholder="Lace, dori, etc."></label>
+            <label>Other qty <input name="otherAccessoryQty" type="number" min="0" step="1" value="0"></label>
           </fieldset>
           <div class="calculation-strip" id="outsourcingPreview">
             <span>Total quantity: <strong>0</strong></span>

@@ -2102,7 +2102,10 @@ function renderOutsourcingRows() {
         <td>${formatDate((entry.createdAt || "").slice(0, 10))}</td>
         <td>${formatDate(entry.pendingDeliveryDate || entry.deliveryDate)}</td>
         <td>${formatAccessories(entry.accessories)}</td>
-        <td class="num">
+        <td class="num row-actions-cell">
+          <button class="icon-button" type="button" data-print-outsourcing="${entry.id}" aria-label="Print outsourcing receipt" data-tooltip="Print / download receipt">
+            <i data-lucide="printer" aria-hidden="true"></i>
+          </button>
           <button class="icon-button danger" type="button" data-delete-outsourcing="${entry.id}" aria-label="Delete outsourcing entry" data-tooltip="Delete">
             <i data-lucide="trash-2" aria-hidden="true"></i>
           </button>
@@ -2642,7 +2645,13 @@ function formatAccessories(accessories) {
   if (toNumber(accessories?.elastic)) parts.push(`Elastic ${formatQty(accessories.elastic)}`);
   if (toNumber(accessories?.button)) parts.push(`Button ${formatQty(accessories.button)}`);
   if (toNumber(accessories?.tag)) parts.push(`Tag ${formatQty(accessories.tag)}`);
-  if (accessories?.otherAccessory) parts.push(accessories.otherAccessory);
+  if (accessories?.otherAccessory) {
+    parts.push(
+      toNumber(accessories?.otherAccessoryQty)
+        ? `${accessories.otherAccessory} ${formatQty(accessories.otherAccessoryQty)}`
+        : accessories.otherAccessory
+    );
+  }
   return parts.length ? parts.join(", ") : "None";
 }
 
@@ -3882,7 +3891,8 @@ function bindEvents() {
         elastic: toNumber(form.elastic.value),
         button: toNumber(form.button.value),
         tag: toNumber(form.tag.value),
-        otherAccessory: form.otherAccessory.value.trim()
+        otherAccessory: form.otherAccessory.value.trim(),
+        otherAccessoryQty: toNumber(form.otherAccessoryQty.value)
       }
     });
     if (sourceCutting) {
@@ -4100,6 +4110,12 @@ function bindEvents() {
       const entry = state.outsourcing.find((item) => item.id === entryId);
       const receipt = entry?.receipts?.find((item) => item.id === receiptId);
       if (entry && receipt) openIncomingReceiptVoucher(entry, receipt);
+    }
+
+    const printOutsourcing = event.target.closest("[data-print-outsourcing]");
+    if (printOutsourcing) {
+      const entry = state.outsourcing.find((item) => item.id === printOutsourcing.dataset.printOutsourcing);
+      if (entry) openOutsourcingReceipt(entry);
     }
 
     const deleteOutsourcing = event.target.closest("[data-delete-outsourcing]");
