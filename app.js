@@ -1442,8 +1442,8 @@ function renderAll() {
   renderCuttingRows();
   renderStagePanels();
   renderPendingOutsourcingBoard();
+  renderVendorOutsourcingBoard();
   renderOutsourcingRows();
-  renderOutsourcingReceiptsRows();
   renderIncomingMaterialRows();
   renderAccessoryRows();
   renderAccessoryStockRows();
@@ -1816,6 +1816,57 @@ function renderStagePanels() {
       ? batches.map(renderBatchCard).join("")
       : '<p class="empty">No batches</p>';
   });
+}
+
+// "Vendor outsourcing" board: every outsourcing order that's still open
+// (not yet fully received), across EVERY work type — Stitching,
+// Kaaj/Button, Handwork, Dhaga Cutting — not just batches whose cutting.stage
+// happens to be "Outsource stitching". Kaaj/Button and Handwork batches
+// auto-advance their stage the moment they're fully outsourced (see
+// AUTO_ADVANCE_ON_FULL_OUTSOURCE), so relying on stage alone silently
+// dropped those orders from this view even while they were still genuinely
+// out with a vendor. Reading straight off state.outsourcing instead means
+// an order shows up here the instant it's placed and drops off the instant
+// it's fully received, independent of whatever the source batch's stage
+// has moved on to.
+function renderVendorOutsourcingBoard() {
+  const container = document.getElementById("outsourcingVendorBoard");
+  if (!container) return;
+  const open = pendingOutsourcingEntries();
+  container.innerHTML = open.length
+    ? sortOutsourcingRecent(open).map(renderVendorOutsourcingCard).join("")
+    : '<p class="empty">Nothing currently out with a vendor.</p>';
+}
+
+function renderVendorOutsourcingCard(entry) {
+  const totalPieces = getPieces(entry.sizes);
+  const receivedPieces = getOutsourcingReceivedQty(entry);
+  const pendingPieces = getOutsourcingPendingQty(entry);
+  const sourceCutting = entry.sourceCuttingId
+    ? state.cuttings.find((item) => item.id === entry.sourceCuttingId)
+    : null;
+  return `
+    <article class="batch-card">
+      <div>
+        <strong><span class="stage-pill">${escapeHtml(entry.workType)}</span> ${entry.commonName}</strong>
+        <small>${sourceCutting ? `${sourceCutting.batchCode} | ` : ""}${entry.sku}</small>
+        <small>Vendor: ${entry.vendorName}</small>
+      </div>
+      <div class="mini-grid">
+        <span>Ordered <b>${formatQty(totalPieces)}</b></span>
+        <span>Sizes <b>${formatSizeBreakdown(entry.sizes) || "&mdash;"}</b></span>
+        ${receivedPieces > 0 ? `<span>Received <b>${formatQty(receivedPieces)}</b></span>` : ""}
+        <span>Pending <b>${formatQty(pendingPieces)}</b></span>
+        <span>Delivery <b>${formatDate(entry.pendingDeliveryDate || entry.deliveryDate)}</b></span>
+      </div>
+      <div class="row-actions">
+        <button class="secondary-action" type="button" data-log-receipt="${entry.id}">Log receipt</button>
+        <button class="icon-button danger" type="button" data-delete-outsourcing="${entry.id}" aria-label="Delete outsourcing entry" data-tooltip="Delete">
+          <i data-lucide="trash-2" aria-hidden="true"></i>
+        </button>
+      </div>
+    </article>
+  `;
 }
 
 function renderBatchCard(cutting) {
@@ -2229,27 +2280,6 @@ function buildReceiptNumberMap() {
   const map = new Map();
   chronological.forEach((item, index) => map.set(item.receipt.id, index + 1));
   return map;
-}
-
-function renderOutsourcingReceiptsRows() {
-  const rows = sortOutsourcingReceiptsRecent(getAllOutsourcingReceipts());
-  $("#outsourcingReceiptsRows").innerHTML = rows.length
-    ? rows.map(({ entry, receipt }) => `
-      <tr>
-        <td>${formatDate(receipt.date)}</td>
-        <td><span class="stage-pill">${escapeHtml(entry.workType)}</span></td>
-        <td>${escapeHtml(entry.vendorName)}</td>
-        <td>${escapeHtml(entry.sku)}</td>
-        <td>${escapeHtml(entry.commonName)}</td>
-        <td class="num">${formatQty(receipt.qty)}</td>
-        <td class="num">
-          <button class="icon-button" type="button" data-print-receipt="${entry.id}::${receipt.id}" aria-label="Download voucher" data-tooltip="Download voucher">
-            <i data-lucide="file-text" aria-hidden="true"></i>
-          </button>
-        </td>
-      </tr>
-    `).join("")
-    : emptyRow(7);
 }
 
 // Builds a print-ready "Goods Received Voucher" for one specific receipt
@@ -3165,7 +3195,7 @@ function switchOverviewView(viewName) {
   $$(".overview-subview").forEach((view) => view.classList.toggle("active", view.id === `overview${viewName === "status" ? "Status" : "Fabric"}View`));
 }
 
-const OUTSOURCING_VIEW_IDS = { pending: "Pending", vendor: "Vendor", receipts: "Receipts" };
+const OUTSOURCING_VIEW_IDS = { pending: "Pending", vendor: "Vendor" };
 
 function switchOutsourcingView(viewName) {
   $$("#outsourcingSubTabs .sub-tab").forEach((btn) => btn.classList.toggle("active", btn.dataset.outsourcingView === viewName));

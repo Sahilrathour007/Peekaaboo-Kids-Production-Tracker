@@ -530,10 +530,6 @@
           <i data-lucide="truck" aria-hidden="true"></i>
           Vendor outsourcing
         </button>
-        <button class="sub-tab" type="button" data-outsourcing-view="receipts">
-          <i data-lucide="file-text" aria-hidden="true"></i>
-          Receipts summary
-        </button>
       </div>
 
       <div class="outsourcing-subview active" id="outsourcingPendingView">
@@ -549,9 +545,9 @@
       <div class="outsourcing-subview" id="outsourcingVendorView">
         <div class="fabric-components-section">
           <div class="fabric-components-header">
-            <span>Out for stitching<small>Fully outsourced batches — waiting on the vendor. Move forward once returned.</small></span>
+            <span>Out with vendor<small>Every open outsourcing order — Stitching, Kaaj/Button, Handwork, Dhaga Cutting — waiting to come back. Log a receipt once it does.</small></span>
           </div>
-          <div class="stage-board" id="stageBoard-outsource-stitching"></div>
+          <div class="stage-board" id="outsourcingVendorBoard"></div>
         </div>
         <form class="cutting-layout" id="outsourcingForm">
           <div class="source-hint" id="outsourcingHint" hidden>
@@ -600,7 +596,7 @@
         <div class="section-heading" style="margin-top: 20px;">
           <div>
             <h2>Open orders</h2>
-            <p>Only orders not yet fully received. Once an order is fully received against it in Incoming material, it drops off this list &mdash; it still lives in Receipts summary and Incoming material's full history.</p>
+            <p>Only orders not yet fully received. Once an order is fully received against it in Incoming material, it drops off this list &mdash; it still lives in Incoming material's full history.</p>
           </div>
         </div>
         <div class="table-shell">
@@ -623,30 +619,6 @@
         </div>
       </div>
 
-      <div class="outsourcing-subview" id="outsourcingReceiptsView">
-        <div class="section-heading">
-          <div>
-            <h2>Receipts summary</h2>
-            <p>Every incoming receipt logged against a vendor, one row per transaction &mdash; download a printable voucher for any of them.</p>
-          </div>
-        </div>
-        <div class="table-shell">
-          <table>
-            <thead>
-              <tr>
-                <th>Date received</th>
-                <th>Work</th>
-                <th>Vendor</th>
-                <th>SKU</th>
-                <th>Name</th>
-                <th class="num">Qty received</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="outsourcingReceiptsRows"></tbody>
-          </table>
-        </div>
-      </div>
     </section>
 
     <section class="tab-panel" id="incoming-materialPanel">
