@@ -675,6 +675,7 @@ main {
 .cutting-field-row {
   display: flex;
   flex-wrap: wrap;
+  align-items: start;
   gap: 16px 18px;
   margin-bottom: 16px;
 }
