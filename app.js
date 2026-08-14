@@ -279,8 +279,12 @@ function mapFabricToSupabaseRow(fabric) {
     fabric_name: fabric.name,
     print_type: fabric.printType,
     colour: fabric.colour,
-    qty_per_roll: toNumber(fabric.qty),
-    rolls: toNumber(fabric.rolls),
+    // qty_per_roll/rolls were dropped from the fabrics table (2026-08-14) —
+    // the app hasn't collected rolls as a separate value since the intake
+    // form was simplified to a single total-length field, so the two
+    // columns only ever held qty_per_roll=total, rolls=1. total_length is
+    // now the single source of truth on both sides.
+    total_length: toNumber(fabric.totalLength ?? fabric.qty),
     consumed: toNumber(fabric.consumed)
   };
 }
@@ -292,9 +296,12 @@ function mapSupabaseRowToFabric(row) {
     name: row.fabric_name,
     printType: row.print_type,
     colour: row.colour,
-    qty: toNumber(row.qty_per_roll),
-    rolls: toNumber(row.rolls),
-    totalLength: toNumber(row.qty_per_roll) * toNumber(row.rolls),
+    // qty/rolls kept as local-state fields (rolls fixed at 1) so nothing
+    // elsewhere in the app that still reads fabric.qty/fabric.rolls breaks —
+    // only the Supabase-facing shape changed, not the in-memory one.
+    qty: toNumber(row.total_length),
+    rolls: 1,
+    totalLength: toNumber(row.total_length),
     consumed: toNumber(row.consumed)
   };
 }
@@ -459,11 +466,9 @@ function mapOutsourcingToSupabaseRow(entry) {
     vendor_name: entry.vendorName,
     sku: entry.sku,
     common_name: entry.commonName,
-    // rate/amount tracking was removed from the app entirely (form, tables,
-    // receipts, receipt PDF, stats). Still sending 0 here rather than
-    // dropping the column, since the Supabase table may have this as
-    // NOT NULL and there's no way to confirm/alter that schema from here.
-    rate: 0,
+    // rate column dropped from outsourcing table (2026-08-14) — the app
+    // stopped collecting it long before this, this was just the last
+    // placeholder value keeping the old NOT NULL column satisfied.
     delivery_date: entry.deliveryDate || todayDate(),
     pending_delivery_date: entry.pendingDeliveryDate || null,
     created_at: entry.createdAt || new Date().toISOString()
@@ -494,11 +499,9 @@ function mapOutsourcingReceipts(entry) {
       id: receipt.id,
       outsourcing_id: entry.id,
       qty: toNumber(receipt.qty),
-      received_date: receipt.date || todayDate(),
-      // Same reasoning as rate above — amount_paid is no longer collected
-      // anywhere in the app, but kept at 0 here in case the column is
-      // NOT NULL on the Supabase side.
-      amount_paid: 0
+      received_date: receipt.date || todayDate()
+      // amount_paid column dropped from outsourcing_receipts (2026-08-14) —
+      // same reasoning as rate above.
     }))
     .filter((row) => row.id && row.qty > 0);
 }
@@ -605,7 +608,7 @@ async function loadRemoteFabrics() {
   if (!supabaseClient) return false;
   const { data, error } = await supabaseClient
     .from("fabrics")
-    .select("code,fabric_name,print_type,colour,qty_per_roll,rolls,consumed")
+    .select("code,fabric_name,print_type,colour,total_length,consumed")
     .order("created_at", { ascending: true });
   if (error) {
     console.error("Supabase fabrics load failed", error);
@@ -3466,11 +3469,9 @@ function bindEvents() {
       printType: form.printType.value.trim(),
       colour: form.colour.value.trim(),
       date: form.date.value,
-      // The Supabase table only has qty_per_roll/rolls columns (no direct
-      // totalLength column — see mapFabricToSupabaseRow/mapSupabaseRowToFabric,
-      // which derive totalLength as qty_per_roll * rolls on every read). The
-      // form no longer collects rolls separately, so store the single total
-      // length as qty with rolls fixed at 1 to keep that round-trip intact.
+      // Supabase's fabrics table stores this directly as total_length now
+      // (see mapFabricToSupabaseRow). qty/rolls kept here only because
+      // other local code still reads fabric.qty/fabric.rolls off state.
       qty: totalLength,
       rolls: 1,
       totalLength,
