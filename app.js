@@ -4192,66 +4192,146 @@ async function initApp() {
 }
 
 // --- Auth gating -----------------------------------------------------
-// RLS on fabrics/production_tracker_state and the replace_relational_data
-// RPC require an authenticated session — that's a Supabase requirement, not
-// optional. There is no login screen anymore, so instead of asking a human
-// to sign in, the app signs itself in anonymously on load. An anonymous
-// Supabase session still satisfies "authenticated" RLS policies, which is
-// what actually made data reach the database — a missing/invalid session
-// was why the last two outsourcing entries only ever landed in
-// localStorage. This requires "Allow anonymous sign-ins" to be turned on
-// for the project in Supabase (Authentication -> Providers -> Anonymous).
-//
-// Tradeoff worth knowing: anyone who opens this public URL gets the same
-// anonymous write access this app uses — there's no per-user identity
-// anymore. Fine for a small internal tool behind an unlisted link; not
-// fine if this URL is ever shared or indexed publicly.
+// Real email/password auth, restricted to one authorized account.
+// Anonymous sign-in is gone (disabled project-side in Supabase Auth ->
+// Providers; the old signInAnonymously() call would just throw now that
+// it's disabled server-side, so it's removed here too). RLS/policies do
+// the real enforcement server-side; the ALLOWED_EMAIL check below is a
+// client-side UX guard only (clear error message, immediate sign-out) —
+// it is NOT a security boundary by itself and can't be, since anyone can
+// read this file. The actual boundary is: (1) "Allow new users to sign
+// up" turned OFF in Supabase Auth settings, so no one else can ever
+// create an account, and (2) only one user exists under Authentication ->
+// Users. If either of those drifts, this client-side check alone won't
+// protect anything — re-verify both in the Supabase dashboard, not just
+// in this file, if access control is ever in question.
+const ALLOWED_EMAIL = "peekaabookidsonline@gmail.com";
 
 let appBooted = false;
 
+function showLoginScreen(message = "") {
+  const login = $("#loginScreen");
+  const root = $("#appRoot");
+  if (login) login.hidden = false;
+  if (root) root.hidden = true;
+  const errorEl = $("#loginError");
+  if (errorEl) errorEl.textContent = message;
+}
+
+function showApp() {
+  const login = $("#loginScreen");
+  const root = $("#appRoot");
+  if (login) login.hidden = true;
+  if (root) root.hidden = false;
+}
+
 async function showAppAfterLogin() {
+  showApp();
   if (!appBooted) {
     appBooted = true;
     await initApp();
   }
 }
 
-async function ensureSupabaseSession() {
+// Returns true only if there's a live session AND it belongs to the one
+// authorized email. Any other authenticated session (shouldn't be
+// possible with signups off, but defense in depth) gets signed out
+// immediately rather than silently trusted.
+async function checkAuthorizedSession() {
   if (!supabaseClient) return false;
   const { data: { session } } = await supabaseClient.auth.getSession();
-  if (session) return true;
-
-  const { error } = await supabaseClient.auth.signInAnonymously();
-  if (error) {
-    console.error(
-      "Supabase anonymous sign-in failed - check that 'Allow anonymous sign-ins' is enabled in Authentication > Providers.",
-      error
-    );
+  if (!session) return false;
+  if (session.user?.email !== ALLOWED_EMAIL) {
+    await supabaseClient.auth.signOut();
     return false;
   }
   return true;
+}
+
+function bindLoginForm() {
+  const form = $("#loginForm");
+  if (!form || form.dataset.bound) return;
+  form.dataset.bound = "1";
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submitBtn = $("#loginSubmit");
+    const errorEl = $("#loginError");
+    errorEl.textContent = "";
+    submitBtn.disabled = true;
+    const email = $("#loginEmail").value.trim();
+    const password = $("#loginPassword").value;
+    if (email.toLowerCase() !== ALLOWED_EMAIL.toLowerCase()) {
+      errorEl.textContent = "This account is not authorized to access this tracker.";
+      submitBtn.disabled = false;
+      return;
+    }
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    submitBtn.disabled = false;
+    if (error) {
+      errorEl.textContent = error.message || "Sign in failed. Check your email and password.";
+      return;
+    }
+    if (data.user?.email !== ALLOWED_EMAIL) {
+      await supabaseClient.auth.signOut();
+      errorEl.textContent = "This account is not authorized to access this tracker.";
+      return;
+    }
+    form.reset();
+    remoteLoadComplete = false;
+    await showAppAfterLogin();
+  });
 }
 
 async function handleReconnect() {
   const btn = $("#reconnectBtn");
   if (btn) btn.disabled = true;
   setSyncStatus("Reconnecting...", "pending");
-  const ok = await ensureSupabaseSession();
+  const ok = await checkAuthorizedSession();
   if (ok) {
     remoteLoadComplete = false;
     await loadRemoteState();
   } else {
-    setSyncStatus("Supabase unavailable", "error");
+    setSyncStatus("Signed out", "error");
+    showLoginScreen();
   }
   if (btn) btn.disabled = false;
 }
 
+function handleLogout() {
+  if (!supabaseClient) return;
+  supabaseClient.auth.signOut().then(() => {
+    appBooted = false;
+    showLoginScreen();
+  });
+}
+
 async function bootWithAuth() {
-  if (supabaseClient) {
-    await ensureSupabaseSession();
-    $("#reconnectBtn")?.addEventListener("click", handleReconnect);
+  if (!supabaseClient) {
+    // No Supabase configured at all (local dev without config) — nothing
+    // to gate, just run the app in local-only mode as before.
+    await showAppAfterLogin();
+    return;
   }
-  await showAppAfterLogin();
+
+  bindLoginForm();
+  $("#reconnectBtn")?.addEventListener("click", handleReconnect);
+  $("#logoutBtn")?.addEventListener("click", handleLogout);
+
+  // If the session expires or gets signed out mid-use, drop back to the
+  // login screen instead of leaving a half-authenticated app on screen.
+  supabaseClient.auth.onAuthStateChange((event) => {
+    if (event === "SIGNED_OUT" && appBooted) {
+      appBooted = false;
+      showLoginScreen();
+    }
+  });
+
+  const authorized = await checkAuthorizedSession();
+  if (authorized) {
+    await showAppAfterLogin();
+  } else {
+    showLoginScreen();
+  }
 }
 
 bootWithAuth();
