@@ -295,7 +295,7 @@
         </div>
         <div class="fabric-intake-row">
           <label>Date received<span class="req">*</span> <input required name="date" type="date"></label>
-          <label>Total length (m)<span class="req">*</span> <input required name="totalLength" type="number" min="0" step="0.01" placeholder="e.g. 600"></label>
+          <label>Total length (m)<span class="req">*</span> <input class="hl-input" required name="totalLength" type="number" min="0" step="0.01" placeholder="e.g. 600"></label>
           <button class="primary-action" type="submit">
             <i data-lucide="plus" aria-hidden="true"></i>
             Add fabric
@@ -331,7 +331,7 @@
       </div>
       <form class="cutting-layout" id="estimationForm">
         <div class="form-grid compact">
-          <label>Common name <input name="commonName" autocomplete="off" placeholder="Pathan Boys kurta jacket set - blue"></label>
+          <label>Common name <input class="hl-input" name="commonName" autocomplete="off" placeholder="Pathan Boys kurta jacket set - blue"></label>
           <label>SKU code <input name="sku" autocomplete="off" placeholder="56C74BSlCaSoLeRBRe"></label>
         </div>
         <div class="fabric-components-section">
@@ -384,12 +384,12 @@
         <div class="cutting-section-block style-block">
           <span class="cutting-section-title">Style &amp; batch details</span>
           <div class="cutting-field-row identity">
-            <label>Common name<span class="req">*</span> <input required name="commonName" autocomplete="off" placeholder="London Pink"></label>
+            <label>Common name<span class="req">*</span> <input class="hl-input" required name="commonName" autocomplete="off" placeholder="London Pink"></label>
             <label>SKU code<span class="req">*</span> <input required name="sku" autocomplete="off" placeholder="19DoFoLoSoI"></label>
           </div>
           <div class="cutting-field-row meta">
             <label>Gender<span class="req">*</span>
-              <select required name="gender" id="cuttingGenderSelect">
+              <select class="hl-input" required name="gender" id="cuttingGenderSelect">
                 <option value="" disabled selected>Select gender&hellip;</option>
                 <option value="boys">Boys</option>
                 <option value="girls">Girls</option>
@@ -397,7 +397,7 @@
               <small class="gender-auto-hint" id="genderAutoHint" hidden>Auto-filled from SKU/name &mdash; change if wrong.</small>
             </label>
             <label>Date<span class="req">*</span> <input required name="entryDate" type="date"></label>
-            <label>Correction (m)<span class="req">*</span> <input required name="correctionMeters" type="number" min="0" step="0.1" value="0"></label>
+            <label>Correction (m)<span class="req">*</span> <input class="hl-input" required name="correctionMeters" type="number" min="0" step="0.1" value="0"></label>
           </div>
         </div>
         <div class="fabric-components-section fabrics-block">
@@ -573,12 +573,12 @@
                 <option value="Handwork">Handwork</option>
               </select>
             </label>
-            <label>Vendor name<span class="req">*</span> <input required name="vendorName" autocomplete="off" placeholder="Vendor name"></label>
+            <label>Vendor name<span class="req">*</span> <input class="hl-input" required name="vendorName" autocomplete="off" placeholder="Vendor name"></label>
           </div>
           <div class="form-grid compact outsourcing-row-2">
             <label>SKU code<span class="req">*</span> <input required name="sku" autocomplete="off" placeholder="19DoFoLoSoI"></label>
             <label>Common name<span class="req">*</span> <input required name="commonName" autocomplete="off" placeholder="London Pink"></label>
-            <label>Delivery date<span class="req">*</span> <input required name="deliveryDate" type="date"></label>
+            <label>Delivery date<span class="req">*</span> <input class="hl-input" required name="deliveryDate" type="date"></label>
           </div>
           <fieldset class="size-grid">
             <legend>Size-wise quantity<span class="req">*</span></legend>
@@ -710,14 +710,14 @@
       </div>
       <form class="form-grid compact accessory-stock-form" id="accessoryStockForm">
         <label>Accessory type<span class="req">*</span>
-          <select required name="accessoryType" id="accessoryStockType">
+          <select class="hl-input" required name="accessoryType" id="accessoryStockType">
             <option value="elastic">Elastic</option>
             <option value="button">Button</option>
             <option value="tag">Tag</option>
             <option value="other">Other</option>
           </select>
         </label>
-        <label>Quantity received<span class="req">*</span> <input required name="qty" type="number" min="0" step="1" placeholder="500"></label>
+        <label>Quantity received<span class="req">*</span> <input class="hl-input" required name="qty" type="number" min="0" step="1" placeholder="500"></label>
         <label>Date received<span class="req">*</span> <input required name="date" type="date"></label>
         <button class="primary-action" type="submit">
           <i data-lucide="plus" aria-hidden="true"></i>
@@ -787,7 +787,7 @@
     <form id="receiveForm" method="dialog">
       <h2>Log incoming receipt</h2>
       <label>Search vendor
-        <input type="text" id="receiveVendorSearch" autocomplete="off" placeholder="Type a vendor name to filter&hellip;">
+        <input type="text" class="hl-input" id="receiveVendorSearch" autocomplete="off" placeholder="Type a vendor name to filter&hellip;">
       </label>
       <label>Outsourcing entry<span class="req">*</span>
         <select required id="receiveEntrySelect"></select>

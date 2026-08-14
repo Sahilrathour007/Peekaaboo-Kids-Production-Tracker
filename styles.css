@@ -1023,21 +1023,29 @@ main {
   max-width: 480px;
 }
 
-.fabric-search-field input {
+.fabric-search-field input,
+.hl-input {
   border-color: var(--accent);
   background: #eefafa;
   background: color-mix(in srgb, var(--accent) 6%, #fff);
   box-shadow: 0 0 0 3px rgba(0, 109, 119, 0.08);
 }
 
-.fabric-search-field input::placeholder {
+.fabric-search-field input::placeholder,
+.hl-input::placeholder {
   color: var(--accent);
   opacity: 0.55;
 }
 
-.fabric-search-field input:focus {
+.fabric-search-field input:focus,
+.hl-input:focus {
   background: #fff;
 }
+
+/* Same treatment, reused on any other field across the app that's a
+   primary/required entry point (fields listed by name in the "highlight
+   these" request) so they get the same visibly-distinct teal styling
+   without duplicating the fabric-search-field markup pattern. */
 
 /* Visual break between the entry form and the list of what's already
    been logged, so the two don't read as one continuous block. */

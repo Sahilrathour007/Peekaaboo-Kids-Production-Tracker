@@ -1127,7 +1127,7 @@ function addEstimationGarmentRow(type = "", label = "", pieces = "") {
       <input data-role="garmentLabel" autocomplete="off" placeholder="e.g. Kurta" value="${escapeHtml(label)}">
     </label>
     <label>Pieces<span class="req">*</span>
-      <input data-role="garmentPieces" type="number" min="0" step="1" placeholder="40" value="${escapeHtml(String(pieces))}">
+      <input class="hl-input" data-role="garmentPieces" type="number" min="0" step="1" placeholder="40" value="${escapeHtml(String(pieces))}">
     </label>
     <button class="icon-button danger" type="button" data-remove-estimation-garment-row aria-label="Remove this garment" data-tooltip="Remove">
       <i data-lucide="trash-2" aria-hidden="true"></i>
@@ -1181,7 +1181,7 @@ function renderEstimationRows() {
         <small>${escapeHtml([req.printType, req.colour].filter(Boolean).join(" / ") || "\u2014")}</small>
       </div>
       <div class="avg-used-group">
-        <input class="fabric-avg-used" data-role="avgUsed" type="number" min="0.01" step="0.1" placeholder="Avg used/piece \u2014 required">
+        <input class="fabric-avg-used hl-input" data-role="avgUsed" type="number" min="0.01" step="0.1" placeholder="Avg used/piece \u2014 required">
         <select class="avg-used-unit" data-role="avgUsedUnit" aria-label="Unit">
           <option value="cm" selected>cm</option>
           <option value="m">m</option>
@@ -3109,9 +3109,9 @@ function addFabricComponentRow(fabricCode = "", avgUsed = "", required = null) {
   wrapper.dataset.rowId = id;
   wrapper.dataset.fabricCode = fabricCode;
   wrapper.innerHTML = `
-    <input class="fabric-search" data-role="search" autocomplete="off" placeholder="Search style/nickname, fabric name, print, colour, or code">
+    <input class="fabric-search hl-input" data-role="search" autocomplete="off" placeholder="Search style/nickname, fabric name, print, colour, or code">
     <div class="avg-used-group">
-      <input class="fabric-avg-used" data-role="avgUsed" type="number" min="0.01" step="0.1" placeholder="Avg used/piece \u2014 required" value="${avgUsed}">
+      <input class="fabric-avg-used hl-input" data-role="avgUsed" type="number" min="0.01" step="0.1" placeholder="Avg used/piece \u2014 required" value="${avgUsed}">
       <select class="avg-used-unit" data-role="avgUsedUnit" aria-label="Unit">
         <option value="cm" selected>cm</option>
         <option value="m">m</option>
@@ -3189,7 +3189,7 @@ function addGarmentComponentRow(type = "", label = "") {
     </button>
     <fieldset class="size-grid garment-size-grid" data-role="ownSizeGrid">
       <legend>Sizes for this garment<span class="req">*</span></legend>
-      ${SIZES.map(([name, sizeLabel]) => `<label>${sizeLabel} <input type="number" min="0" step="1" value="0" data-size="${name}"></label>`).join("")}
+      ${SIZES.map(([name, sizeLabel]) => `<label>${sizeLabel} <input class="hl-input" type="number" min="0" step="1" value="0" data-size="${name}"></label>`).join("")}
     </fieldset>
   `;
   container.appendChild(wrapper);
