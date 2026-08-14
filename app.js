@@ -1127,7 +1127,7 @@ function addEstimationGarmentRow(type = "", label = "", pieces = "") {
       <input data-role="garmentLabel" autocomplete="off" placeholder="e.g. Kurta" value="${escapeHtml(label)}">
     </label>
     <label>Pieces<span class="req">*</span>
-      <input class="hl-input" data-role="garmentPieces" type="number" min="0" step="1" placeholder="40" value="${escapeHtml(String(pieces))}">
+      <input class="hl-input" data-role="garmentPieces" type="number" min="0" step="1" placeholder="e.g. 40" value="${escapeHtml(String(pieces))}">
     </label>
     <button class="icon-button danger" type="button" data-remove-estimation-garment-row aria-label="Remove this garment" data-tooltip="Remove">
       <i data-lucide="trash-2" aria-hidden="true"></i>
