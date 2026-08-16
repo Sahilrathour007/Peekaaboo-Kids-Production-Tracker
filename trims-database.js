@@ -9,7 +9,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Scal Lace",
           "printType": "",
           "colour": "",
-          "vendor": "Shakambari",
           "avgPerPiece": 0.9,
           "unit": "m"
         },
@@ -18,7 +17,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Ladder Lace",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 0.35,
           "unit": "m"
         },
@@ -27,7 +25,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Square Cross lace",
           "printType": "",
           "colour": "",
-          "vendor": "Shakambari",
           "avgPerPiece": 2.1,
           "unit": "m"
         },
@@ -36,7 +33,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Broad Floral lace",
           "printType": "",
           "colour": "",
-          "vendor": "Shakambari",
           "avgPerPiece": 0.8,
           "unit": "m"
         }
@@ -51,7 +47,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Broad dori",
           "printType": "",
           "colour": "",
-          "vendor": "Ashok Ji dori",
           "avgPerPiece": 1.87,
           "unit": "m"
         },
@@ -60,7 +55,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Smocking",
           "printType": "",
           "colour": "",
-          "vendor": "Jeetu Bhaiya",
           "avgPerPiece": 0.45,
           "unit": "m"
         }
@@ -75,7 +69,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Zig Zag broad (0.5 inch)",
           "printType": "",
           "colour": "",
-          "vendor": "Shakambari",
           "avgPerPiece": 1.8,
           "unit": "m"
         }
@@ -90,7 +83,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Broad dori",
           "printType": "",
           "colour": "",
-          "vendor": "Ashok Ji dori",
           "avgPerPiece": 1.87,
           "unit": "m"
         },
@@ -99,7 +91,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Smocking",
           "printType": "",
           "colour": "",
-          "vendor": "Jeetu Bhaiya",
           "avgPerPiece": 0.45,
           "unit": "m"
         }
@@ -114,7 +105,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Pom Pom Pink",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 1.34,
           "unit": "m"
         }
@@ -129,7 +119,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Pom Pom Red",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 1.34,
           "unit": "m"
         }
@@ -144,7 +133,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "white smocking",
           "printType": "",
           "colour": "",
-          "vendor": "Jeetu Bhaiya",
           "avgPerPiece": 0.3,
           "unit": "m"
         },
@@ -153,7 +141,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Zig Zag broad (0.5 inch)",
           "printType": "",
           "colour": "",
-          "vendor": "Shakambari",
           "avgPerPiece": 1.32,
           "unit": "m"
         },
@@ -162,7 +149,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Broad Floral lace",
           "printType": "",
           "colour": "",
-          "vendor": "Shakambari",
           "avgPerPiece": 0.57,
           "unit": "m"
         },
@@ -171,7 +157,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Fabric buttons",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 5,
           "unit": "count"
         },
@@ -180,7 +165,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Printed smocking",
           "printType": "",
           "colour": "",
-          "vendor": "Jeetu Bhaiya",
           "avgPerPiece": 0.9,
           "unit": "m"
         }
@@ -195,7 +179,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Multicolor Lace",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 0.35,
           "unit": "m"
         }
@@ -210,7 +193,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Multicolor Lace",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 1.32,
           "unit": "m"
         }
@@ -225,7 +207,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Golden lace",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 0.5,
           "unit": "m"
         },
@@ -234,7 +215,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Pom Pom Pink",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 0.33,
           "unit": "m"
         },
@@ -243,7 +223,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Fabric dori pink",
           "printType": "",
           "colour": "",
-          "vendor": "Ashok Ji dori",
           "avgPerPiece": 2.29,
           "unit": "m"
         },
@@ -252,7 +231,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Fabric dori dori",
           "printType": "",
           "colour": "",
-          "vendor": "Ashok Ji dori",
           "avgPerPiece": 2.29,
           "unit": "m"
         },
@@ -261,7 +239,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Golden tassels",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 13,
           "unit": "count"
         }
@@ -276,7 +253,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Golden lace",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 6.04,
           "unit": "m"
         }
@@ -291,7 +267,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Ladder Lace",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 1.11,
           "unit": "m"
         },
@@ -300,7 +275,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Coin lace",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 1.82,
           "unit": "m"
         }
@@ -315,7 +289,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Ladder Lace",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 1.11,
           "unit": "m"
         },
@@ -324,7 +297,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Coin lace",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 1.82,
           "unit": "m"
         }
@@ -339,7 +311,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Pani color gota",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 1.76,
           "unit": "m"
         }
@@ -354,7 +325,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Pani color gota",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 3.14,
           "unit": "m"
         }
@@ -369,7 +339,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Multicolor Lace",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 0.53,
           "unit": "m"
         },
@@ -378,7 +347,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Samosa silver lace",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 2.26,
           "unit": "m"
         },
@@ -387,7 +355,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Tool dori",
           "printType": "",
           "colour": "",
-          "vendor": "Sham lining",
           "avgPerPiece": 0.9,
           "unit": "m"
         }
@@ -402,7 +369,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Samosa silver lace",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 1.27,
           "unit": "m"
         }
@@ -417,7 +383,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Samosa silver lace",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 3.31,
           "unit": "m"
         }
@@ -432,7 +397,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Baju organza lace 3\"",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 0.45,
           "unit": "m"
         },
@@ -441,7 +405,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Sharara Organza lace 4\"",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 1.52,
           "unit": "m"
         },
@@ -450,7 +413,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Sequin Leaf cotton lace",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 0.38,
           "unit": "m"
         },
@@ -459,7 +421,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Ladder Lace",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 0.47,
           "unit": "m"
         },
@@ -468,7 +429,6 @@ window.PEEKABOO_TRIMS = {
           "fabricName": "Mirror lace",
           "printType": "",
           "colour": "",
-          "vendor": "Kratika",
           "avgPerPiece": 0.58,
           "unit": "m"
         }
