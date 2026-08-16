@@ -752,6 +752,13 @@ main {
   }
 }
 
+/* Estimation's legend matches its row's 5-column main line (Part / Fabric
+   name / Print / Colour / remove) — narrower than the cutting form's fabric
+   row, which doesn't have a Part/role column. */
+.estimation-row-legend {
+  grid-template-columns: 0.9fr 1.3fr 0.85fr 0.85fr auto;
+}
+
 .fabric-component-row:last-child {
   margin-bottom: 0;
 }
@@ -859,18 +866,59 @@ main {
   }
 }
 
+/* Estimation rows are now editable fabric PARTS (role + fabric name/print/
+   colour + remove, on the main line), with the calculated needed/in-stock/
+   status read-outs on a second, full-width line below — there's simply too
+   much per row now (5 editable fields + 3 read-outs) to fit one line even
+   on a wide desktop. */
 .estimation-row {
+  grid-template-columns: 0.9fr 1.3fr 0.85fr 0.85fr auto;
+  row-gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--line);
+}
+
+.estimation-row:last-child {
+  border-bottom: none;
+}
+
+.estimation-row-detail {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-}
-
-.estimation-fabric-label {
-  display: grid;
-  gap: 2px;
-}
-
-.estimation-fabric-label small {
+  gap: 6px 18px;
+  font-size: 12px;
   color: var(--muted);
-  font-weight: 500;
+}
+
+.estimation-row-detail .avg-used-group {
+  flex: 0 0 auto;
+  width: 180px;
+}
+
+.estimation-master-status {
+  margin: -6px 0 16px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.estimation-master-status.master {
+  color: var(--success);
+}
+
+.estimation-master-status.legacy {
+  color: var(--accent);
+}
+
+.estimation-master-status.new {
+  color: var(--muted);
+}
+
+.estimation-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
 }
 
 .estimation-empty {
@@ -911,18 +959,17 @@ main {
 
 @media (max-width: 780px) {
   .estimation-row {
-    grid-template-columns: 1.6fr 1fr auto;
-  }
-
-  .estimation-row [data-role="needed"],
-  .estimation-row [data-role="available"] {
-    grid-column: span 1;
+    grid-template-columns: 1fr 1fr auto;
   }
 }
 
 @media (max-width: 620px) {
   .estimation-row {
     grid-template-columns: 1fr;
+  }
+
+  .estimation-row-detail .avg-used-group {
+    width: 100%;
   }
 }
 

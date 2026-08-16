@@ -326,32 +326,43 @@
       <div class="section-heading">
         <div>
           <h2>Fabric estimation</h2>
-          <p>Pick a common name or SKU and how many pieces of each garment you want to produce &mdash; see the fabric needed for each roll it uses (styles cut from two fabrics get a row each) and whether current stock covers it.</p>
+          <p>Pick a common name or SKU (or start typing a new one) and how many pieces you want to produce &mdash; break the style into its fabric parts (Top, Bottom, Lining, Overall/Misc, or any part you name), see what each part needs, and whether current stock covers THAT part. Save the parts as this SKU's master data so you never have to re-enter them.</p>
         </div>
       </div>
+      <datalist id="estimationRoleSuggestions">
+        <option value="Top"></option>
+        <option value="Bottom"></option>
+        <option value="Lining"></option>
+        <option value="Overall/Misc"></option>
+      </datalist>
       <form class="cutting-layout" id="estimationForm">
         <div class="form-grid compact">
           <label>Common name <input class="hl-input" name="commonName" autocomplete="off" placeholder="e.g. Pathan Boys kurta jacket set - blue"></label>
           <label>SKU code <input name="sku" autocomplete="off" placeholder="e.g. 56C74BSlCaSoLeRBRe"></label>
         </div>
+        <p class="estimation-master-status new" id="estimationMasterStatus" hidden>New SKU &mdash; not saved yet.</p>
         <div class="fabric-components-section">
           <div class="fabric-components-header">
-            <span>Fabric requirement <small>Auto-filled from the SKU&rsquo;s master record once you pick a common name or SKU above. Enter the average fabric used per piece for each fabric &mdash; a style cut from two fabrics (coord sets, contrast panels) shows two rows.</small></span>
+            <span>Fabric parts <small>One row per part of this style that uses its own fabric &mdash; Top, Bottom, Lining, Overall/Misc, or a custom part. Each part's avg used/piece is checked against that part's OWN stock; parts are never combined for the sufficiency check.</small></span>
+            <button class="secondary-action" type="button" id="addEstimationComponentRowBtn">
+              <i data-lucide="plus" aria-hidden="true"></i>
+              Add fabric part
+            </button>
           </div>
           <div class="fabric-row-legend estimation-row-legend" aria-hidden="true">
-            <span>Fabric</span>
-            <span>Avg used/piece<span class="req">*</span></span>
-            <span>Needed</span>
-            <span>In stock</span>
-            <span>Status</span>
+            <span>Part</span>
+            <span>Fabric name</span>
+            <span>Print</span>
+            <span>Colour</span>
+            <span></span>
           </div>
           <div id="estimationComponentsContainer">
-            <p class="estimation-empty">Pick a common name or SKU above to load its fabric requirement(s).</p>
+            <p class="estimation-empty">Pick a common name or SKU above, or start typing a new one, to build its fabric requirement.</p>
           </div>
         </div>
         <div class="fabric-components-section" id="estimationGarmentsSection">
           <div class="fabric-components-header">
-            <span>Garments produced<span class="req">*</span> <small>Add a row per garment you want to produce (e.g. Kurta + Pant cut as a set). For a set cut from a shared roll, the fabric average above already covers the whole set &mdash; it's applied once per set, not once per garment.</small></span>
+            <span>Garments produced<span class="req">*</span> <small>Add a row per garment you want to produce (e.g. Kurta + Pant cut as a set). For a set cut from shared rolls, each part's average above already covers the whole set &mdash; it's applied once per set, not once per garment.</small></span>
             <button class="secondary-action" type="button" id="addEstimationGarmentRowBtn">
               <i data-lucide="plus" aria-hidden="true"></i>
               Add garment
@@ -367,8 +378,18 @@
         </div>
         <div class="calculation-strip" id="estimationSummary">
           <span>Producing: <strong id="estimationPiecesSummary">&mdash;</strong></span>
-          <span>Total fabric needed: <strong id="estimationTotalNeeded">0 m</strong></span>
-          <span>Can we fulfill it? <strong id="estimationVerdict">Pick a SKU to begin</strong></span>
+          <span>Combined length, all parts (reference only): <strong id="estimationTotalNeeded">0 m</strong></span>
+          <span>Can we fulfill it? <strong id="estimationVerdict">Add a fabric part to begin</strong></span>
+        </div>
+        <div class="estimation-actions">
+          <button class="primary-action" type="button" id="saveEstimationSkuBtn" hidden>
+            <i data-lucide="save" aria-hidden="true"></i>
+            Save this SKU
+          </button>
+          <button class="secondary-action danger" type="button" id="deleteEstimationSkuBtn" hidden>
+            <i data-lucide="trash-2" aria-hidden="true"></i>
+            Delete SKU
+          </button>
         </div>
       </form>
     </section>

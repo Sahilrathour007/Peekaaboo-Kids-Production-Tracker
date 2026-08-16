@@ -115,7 +115,15 @@ const defaultState = {
   ],
   cuttings: [],
   outsourcing: [],
-  accessoryStock: []
+  accessoryStock: [],
+  // Founder-created/edited SKU master records — the dynamic counterpart to
+  // the static BACKEND_DATA.skuDatabase/fabricDatabase (which is baked in
+  // from the master Excel at build time and never edited in-app). A record
+  // here always wins over a same-SKU BACKEND_DATA entry when both exist.
+  // Soft-delete only: "active:false" hides a SKU from pick-lists/estimation
+  // without breaking any past cutting/outsourcing entry that still
+  // references it by sku/commonName.
+  skuMaster: []
 };
 
 let state = loadState();
@@ -177,8 +185,24 @@ function normalizeState(value) {
     fabrics: value?.fabrics || [],
     cuttings: value?.cuttings || [],
     outsourcing: value?.outsourcing || [],
-    accessoryStock: value?.accessoryStock || []
+    accessoryStock: value?.accessoryStock || [],
+    skuMaster: value?.skuMaster || []
   };
+  // Older saves predate the "active" soft-delete flag and the component
+  // "id" field — backfill both so every record works with the delete guard
+  // and row-keying logic without a migration step.
+  normalized.skuMaster = normalized.skuMaster.map((record) => ({
+    ...record,
+    active: record.active !== false,
+    components: (record.components || []).map((component) => ({
+      id: component.id || crypto.randomUUID(),
+      role: component.role || "",
+      name: component.name || "",
+      printType: component.printType || "",
+      colour: component.colour || "",
+      avgUsedCm: toNumber(component.avgUsedCm) || null
+    }))
+  }));
   normalized.cuttings = normalized.cuttings.map((cutting) => ({
     ...cutting,
     sizesRemaining: cutting.sizesRemaining || { ...cutting.sizes },
@@ -1067,28 +1091,56 @@ function splitBatch(cutting, splitSizes) {
   return child;
 }
 
-// --- Fabric estimation (planning tool: no state is saved or consumed) ---
-
-// Holds the fabric requirement(s) for whatever SKU is currently loaded on
-// the Estimation tab: one entry per fabric slot (most styles have one;
-// coord sets/multi-fabric styles have two). Rebuilt whenever the
-// commonName/SKU field resolves to a match; read by renderEstimationRows.
-let estimationRequirements = [];
+// --- Fabric estimation ---------------------------------------------------
+// A SKU's fabric requirement is a LIST OF COMPONENTS (Top, Bottom, Lining,
+// Overall/Misc, or any custom role) — not a fixed pair of slots. Each
+// component draws on its own physical fabric (name+print+colour), so
+// sufficiency is always checked PER COMPONENT against that component's own
+// stock. Component avg-used figures are never summed into one "needed"
+// quantity for a stock check — that would mix different physical rolls
+// into a meaningless number. The one place a sum belongs is the
+// informational "combined length" line, which is explicitly labelled as
+// reference-only, never as a sufficiency figure.
+//
+// Component source, in priority order:
+//   1. state.skuMaster (founder-saved, active record) — avg-used prefilled.
+//   2. BACKEND_DATA.fabricDatabase (legacy static import, fabric/fabric2
+//      slots only) — avg-used left blank, same as the app always did.
+//   3. Neither — a genuinely new SKU. Rows start empty; the founder builds
+//      them with "+ Add fabric part" and can save them as a master record.
+let estimationComponents = [];
+let estimationSource = "new"; // "master" | "legacy" | "new"
+let estimationMasterId = null;
 let estimationGarmentRowSeq = 0;
+let estimationRowSeq = 0;
 
-function buildEstimationRequirements(fabricRecord) {
+function buildLegacyEstimationComponents(fabricRecord) {
   if (!fabricRecord) return [];
   const reqs = [];
   if (fabricRecord.fabric) {
-    reqs.push({ name: fabricRecord.fabric, printType: fabricRecord.printType, colour: fabricRecord.colour });
+    reqs.push({ id: crypto.randomUUID(), role: "Fabric 1", name: fabricRecord.fabric, printType: fabricRecord.printType, colour: fabricRecord.colour, avgUsedCm: null });
   }
   // Same duplicate-data guard as populateFabricRowsFromSku (cutting form):
   // skip fabric2 when it's an exact duplicate of fabric — a known
   // data-entry artifact in the master sheet, not a genuine second fabric.
   if (fabricRecord.fabric2 && fabricIdentityKey({ name: fabricRecord.fabric2, printType: fabricRecord.printType2, colour: fabricRecord.colour2 }) !== fabricIdentityKey({ name: fabricRecord.fabric, printType: fabricRecord.printType, colour: fabricRecord.colour })) {
-    reqs.push({ name: fabricRecord.fabric2, printType: fabricRecord.printType2, colour: fabricRecord.colour2 });
+    reqs.push({ id: crypto.randomUUID(), role: "Fabric 2", name: fabricRecord.fabric2, printType: fabricRecord.printType2, colour: fabricRecord.colour2, avgUsedCm: null });
   }
   return reqs;
+}
+
+// Resolves whatever SKU/common-name is currently typed into the estimator
+// to its component list + where that list came from. See priority order
+// above.
+function resolveEstimationComponents(skuRecord) {
+  if (!skuRecord) return { source: "new", masterId: null, components: [] };
+  const master = findSkuMasterBySku(skuRecord.sku);
+  if (master) {
+    return { source: "master", masterId: master.id, components: master.components.map((component) => ({ ...component })) };
+  }
+  const legacy = buildLegacyEstimationComponents(findFabricBySku(skuRecord.sku));
+  if (legacy.length) return { source: "legacy", masterId: null, components: legacy };
+  return { source: "new", masterId: null, components: [] };
 }
 
 // Sums *every* received roll matching this fabric/print/colour (not just
@@ -1163,70 +1215,123 @@ function labelEstimationGarment(row) {
   return row.label || GARMENT_TYPE_OPTIONS.find(([value]) => value === row.type)?.[1] || row.type;
 }
 
-function renderEstimationRows() {
+// Builds one editable fabric-part row: role, fabric name/print/colour
+// (each with its own autocomplete, same widgets the Fabric Inventory form
+// uses), avg-used/piece, and a remove button. needed/available/status live
+// on a second line below (see .estimation-row-detail) since they're
+// read-outs, not inputs. Works identically whether the row came from a
+// saved master record, the legacy static import, or was added blank by
+// "+ Add fabric part" for a genuinely new SKU.
+function addEstimationComponentRow(component = {}) {
   const container = $("#estimationComponentsContainer");
-  if (!estimationRequirements.length) {
-    const form = $("#estimationForm");
-    const hasTypedSomething = form.commonName.value.trim() || form.sku.value.trim();
-    container.innerHTML = hasTypedSomething
-      ? `<p class="estimation-empty">No fabric data found for that style &mdash; check the spelling, or pick a different match.</p>`
-      : `<p class="estimation-empty">Pick a common name or SKU above to load its fabric requirement(s).</p>`;
-    updateEstimationCalc();
-    return;
-  }
-  container.innerHTML = estimationRequirements.map((req, index) => `
-    <div class="fabric-component-row estimation-row" data-index="${index}">
-      <div class="estimation-fabric-label">
-        <strong>${escapeHtml(req.name || "\u2014")}</strong>
-        <small>${escapeHtml([req.printType, req.colour].filter(Boolean).join(" / ") || "\u2014")}</small>
-      </div>
+  $(".estimation-empty")?.remove();
+  const id = `estimationRow${++estimationRowSeq}`;
+  const wrapper = document.createElement("div");
+  wrapper.className = "fabric-component-row estimation-row";
+  wrapper.dataset.rowId = id;
+  wrapper.dataset.componentId = component.id || crypto.randomUUID();
+  wrapper.innerHTML = `
+    <input class="hl-input" data-role="role" list="estimationRoleSuggestions" autocomplete="off" placeholder="e.g. Top" value="${escapeHtml(component.role || "")}">
+    <input class="hl-input" data-role="fabricName" autocomplete="off" placeholder="Fabric name" value="${escapeHtml(component.name || "")}">
+    <input data-role="printType" autocomplete="off" placeholder="Print" value="${escapeHtml(component.printType || "")}">
+    <input data-role="colour" autocomplete="off" placeholder="Colour" value="${escapeHtml(component.colour || "")}">
+    <button class="icon-button danger" type="button" data-remove-estimation-row aria-label="Remove this fabric part" data-tooltip="Remove">
+      <i data-lucide="trash-2" aria-hidden="true"></i>
+    </button>
+    <div class="estimation-row-detail">
       <div class="avg-used-group">
-        <input class="fabric-avg-used hl-input" data-role="avgUsed" type="number" min="0.01" step="0.1" placeholder="Avg used/piece \u2014 required">
+        <input class="fabric-avg-used hl-input" data-role="avgUsed" type="number" min="0.01" step="0.1" placeholder="Avg used/piece \u2014 required" value="${component.avgUsedCm || ""}">
         <select class="avg-used-unit" data-role="avgUsedUnit" aria-label="Unit">
           <option value="cm" selected>cm</option>
           <option value="m">m</option>
         </select>
       </div>
-      <span data-role="needed">\u2014</span>
-      <span data-role="available">\u2014</span>
+      <span data-role="needed">Needed: \u2014</span>
+      <span data-role="available">In stock: \u2014</span>
       <span class="estimation-status pending" data-role="status">\u2014</span>
     </div>
-  `).join("");
+  `;
+  container.appendChild(wrapper);
+  attachAutocomplete(wrapper.querySelector('[data-role="fabricName"]'), fabricNameOptions);
+  attachAutocomplete(wrapper.querySelector('[data-role="printType"]'), printTypeOptions);
+  attachAutocomplete(wrapper.querySelector('[data-role="colour"]'), colourOptions);
+  if (window.lucide) window.lucide.createIcons();
+  return wrapper;
+}
+
+function clearEstimationComponentRows() {
+  $("#estimationComponentsContainer").innerHTML = "";
+}
+
+// Reads the live DOM rows — this is the single source of truth once a SKU
+// is loaded (component values are editable, not locked to whatever
+// resolveEstimationComponents originally returned), so saving/estimating
+// always reflects exactly what's on screen.
+function readEstimationComponentRows() {
+  return $$(".estimation-row").map((row) => ({
+    id: row.dataset.componentId,
+    role: row.querySelector('[data-role="role"]').value.trim(),
+    name: row.querySelector('[data-role="fabricName"]').value.trim(),
+    printType: row.querySelector('[data-role="printType"]').value.trim(),
+    colour: row.querySelector('[data-role="colour"]').value.trim(),
+    avgUsedCm: (() => {
+      const raw = toNumber(row.querySelector('[data-role="avgUsed"]').value);
+      const unit = row.querySelector('[data-role="avgUsedUnit"]')?.value || "cm";
+      return unit === "m" ? raw * 100 : raw;
+    })()
+  }));
+}
+
+function renderEstimationComponents() {
+  clearEstimationComponentRows();
+  const form = $("#estimationForm");
+  const hasTypedSomething = form.commonName.value.trim() || form.sku.value.trim();
+  if (!estimationComponents.length) {
+    $("#estimationComponentsContainer").innerHTML = hasTypedSomething
+      ? `<p class="estimation-empty">No saved fabric parts for that style yet &mdash; use "Add fabric part" below to build this SKU's requirement, then save it.</p>`
+      : `<p class="estimation-empty">Pick a common name or SKU above, or start typing a new one, to build its fabric requirement.</p>`;
+  } else {
+    estimationComponents.forEach((component) => addEstimationComponentRow(component));
+  }
+  updateEstimationMasterStatus();
   updateEstimationCalc();
 }
 
-// Recomputes needed/available/status for every rendered fabric row from the
-// current garment-row pieces + avg-used inputs. Pure read of the DOM +
-// state.fabrics — nothing here is saved, so this is safe to call on every
-// keystroke and after any state change elsewhere (receiving fabric,
-// cutting, etc.).
+// Recomputes needed/available/status for every rendered fabric-part row
+// from the current garment-row pieces + this row's own avg-used input.
+// Every row is checked against ITS OWN fabric's stock — never against a
+// sum across other parts, since a Top fabric shortage can't be offset by
+// spare Bottom or Lining fabric. Pure read of the DOM + state.fabrics —
+// nothing here is saved, so it's safe to call on every keystroke.
 function updateEstimationCalc() {
   const garmentRows = readEstimationGarmentRows();
   const pieces = getEstimationSetPieces(garmentRows);
-  let totalNeeded = 0;
+  let combinedLength = 0;
   let anyRows = false;
   let anyMissingInput = false;
   let allSufficient = true;
 
   $$(".estimation-row").forEach((row) => {
     anyRows = true;
-    const req = estimationRequirements[Number(row.dataset.index)];
+    const name = row.querySelector('[data-role="fabricName"]').value.trim();
+    const printType = row.querySelector('[data-role="printType"]').value.trim();
+    const colour = row.querySelector('[data-role="colour"]').value.trim();
     const avgUsedRaw = toNumber(row.querySelector('[data-role="avgUsed"]').value);
     const avgUsedUnit = row.querySelector('[data-role="avgUsedUnit"]')?.value || "cm";
     const avgUsedCm = avgUsedUnit === "m" ? avgUsedRaw * 100 : avgUsedRaw;
     const needed = (avgUsedCm / 100) * pieces;
-    const { available, rollCount } = totalAvailableFabricStock(req.name, req.printType, req.colour);
-    const neededKnown = avgUsedCm > 0 && pieces > 0;
-    if (neededKnown) totalNeeded += needed;
+    const { available, rollCount } = totalAvailableFabricStock(name, printType, colour);
+    const neededKnown = name && avgUsedCm > 0 && pieces > 0;
+    if (neededKnown) combinedLength += needed;
 
-    row.querySelector('[data-role="needed"]').textContent = neededKnown ? formatMeters(needed) : "\u2014";
-    row.querySelector('[data-role="available"]').textContent = rollCount
+    row.querySelector('[data-role="needed"]').textContent = `Needed: ${neededKnown ? formatMeters(needed) : "\u2014"}`;
+    row.querySelector('[data-role="available"]').textContent = `In stock: ${rollCount
       ? `${formatMeters(available)} (${rollCount} roll${rollCount === 1 ? "" : "s"})`
-      : "Not in stock";
+      : "Not in stock"}`;
 
     const statusEl = row.querySelector('[data-role="status"]');
     if (!neededKnown) {
-      statusEl.textContent = pieces > 0 ? "Enter avg used" : "Enter pieces + avg used";
+      statusEl.textContent = !name ? "Enter fabric name" : pieces > 0 ? "Enter avg used" : "Enter pieces + avg used";
       statusEl.className = "estimation-status pending";
       anyMissingInput = true;
       allSufficient = false;
@@ -1250,19 +1355,23 @@ function updateEstimationCalc() {
       (garmentRows.length > 1 ? ` (as a set of ${formatQty(pieces)})` : "")
     : "\u2014";
 
-  $("#estimationTotalNeeded").textContent = formatMeters(totalNeeded);
+  // Combined length across parts is informational only (e.g. sanity-check
+  // against a costing sheet) — it is NEVER what decides sufficiency, since
+  // it mixes different physical fabrics into one number. The verdict below
+  // is decided purely from each row's own per-fabric status above.
+  $("#estimationTotalNeeded").textContent = formatMeters(combinedLength);
   const verdictEl = $("#estimationVerdict");
   if (!anyRows) {
-    verdictEl.textContent = "Pick a SKU to begin";
+    verdictEl.textContent = "Add a fabric part to begin";
     verdictEl.className = "pending";
   } else if (anyMissingInput) {
-    verdictEl.textContent = "Enter pieces + avg fabric used";
+    verdictEl.textContent = "Enter pieces + avg fabric used for every part";
     verdictEl.className = "pending";
   } else if (allSufficient) {
-    verdictEl.textContent = `Yes \u2014 stock covers ${formatQty(pieces)} pieces`;
+    verdictEl.textContent = `Yes \u2014 every part covers ${formatQty(pieces)} pieces`;
     verdictEl.className = "ok";
   } else {
-    verdictEl.textContent = "No \u2014 short on fabric, see rows above";
+    verdictEl.textContent = "No \u2014 short on at least one part, see rows above";
     verdictEl.className = "short";
   }
 }
@@ -1283,6 +1392,32 @@ function guessEstimationGarmentType(skuRecord) {
   if (guessedType) rows[0].querySelector('[data-role="garmentType"]').value = guessedType;
 }
 
+// Shows exactly where the loaded fabric requirement came from, and which
+// actions are available, so it's never ambiguous whether editing a row on
+// screen touches saved master data or not (it never does until "Save this
+// SKU" is clicked).
+function updateEstimationMasterStatus() {
+  const statusEl = $("#estimationMasterStatus");
+  const saveBtn = $("#saveEstimationSkuBtn");
+  const deleteBtn = $("#deleteEstimationSkuBtn");
+  if (!statusEl) return;
+  statusEl.hidden = false;
+  if (estimationSource === "master") {
+    statusEl.textContent = "Loaded from saved SKU master data \u2014 edits here are just for this estimate until you save again.";
+    statusEl.className = "estimation-master-status master";
+    deleteBtn.hidden = false;
+  } else if (estimationSource === "legacy") {
+    statusEl.textContent = "Loaded from the imported style sheet (avg-used not saved there) \u2014 save as a SKU to make these figures reusable next time.";
+    statusEl.className = "estimation-master-status legacy";
+    deleteBtn.hidden = true;
+  } else {
+    statusEl.textContent = "New SKU \u2014 not saved yet.";
+    statusEl.className = "estimation-master-status new";
+    deleteBtn.hidden = true;
+  }
+  saveBtn.hidden = false;
+}
+
 function applySkuToEstimationForm(skuRecord) {
   const form = $("#estimationForm");
   if (skuRecord) {
@@ -1290,9 +1425,82 @@ function applySkuToEstimationForm(skuRecord) {
     form.commonName.value = skuRecord.commonName;
     guessEstimationGarmentType(skuRecord);
   }
-  const fabricRecord = findFabricBySku(skuRecord?.sku);
-  estimationRequirements = buildEstimationRequirements(fabricRecord);
-  renderEstimationRows();
+  const resolved = resolveEstimationComponents(skuRecord);
+  estimationComponents = resolved.components;
+  estimationSource = resolved.source;
+  estimationMasterId = resolved.masterId;
+  renderEstimationComponents();
+}
+
+// Saves whatever is currently on screen (common name, SKU, every fabric
+// part row) as a founder-owned SKU master record. Creates a new record the
+// first time; on every later save for the same SKU it updates that same
+// record in place (matched on masterId when editing an existing one, or on
+// SKU code otherwise) so a SKU never accidentally forks into duplicates.
+function saveEstimationSku() {
+  const form = $("#estimationForm");
+  clearAllInvalid(form);
+  const commonName = form.commonName.value.trim();
+  const sku = form.sku.value.trim();
+  if (!commonName || !sku) {
+    if (!commonName) markFieldInvalid(form.commonName);
+    if (!sku) markFieldInvalid(form.sku);
+    alert("Enter a common name and SKU code before saving.");
+    return;
+  }
+  const components = readEstimationComponentRows();
+  if (!components.length) {
+    alert("Add at least one fabric part before saving.");
+    return;
+  }
+  let hasInvalid = false;
+  $$(".estimation-row").forEach((row) => {
+    const nameInput = row.querySelector('[data-role="fabricName"]');
+    const avgInput = row.querySelector('[data-role="avgUsed"]');
+    if (!nameInput.value.trim()) { markFieldInvalid(nameInput); hasInvalid = true; }
+    if (!(toNumber(avgInput.value) > 0)) { markFieldInvalid(avgInput); hasInvalid = true; }
+  });
+  if (hasInvalid) {
+    alert("Every fabric part needs a fabric name AND an average used/piece greater than 0 before saving. The missing fields are highlighted in red.");
+    return;
+  }
+
+  const existingById = estimationMasterId ? state.skuMaster.find((item) => item.id === estimationMasterId) : null;
+  const existingBySku = existingById || state.skuMaster.find((item) => item.sku.toLowerCase() === sku.toLowerCase());
+  if (existingBySku) {
+    existingBySku.sku = sku;
+    existingBySku.commonName = commonName;
+    existingBySku.components = components;
+    existingBySku.active = true;
+    estimationMasterId = existingBySku.id;
+  } else {
+    const record = { id: crypto.randomUUID(), sku, commonName, components, active: true, createdAt: new Date().toISOString() };
+    state.skuMaster.push(record);
+    estimationMasterId = record.id;
+  }
+  estimationSource = "master";
+  estimationComponents = components;
+  saveState();
+  updateEstimationMasterStatus();
+  alert(`Saved "${commonName}" (${sku}) to SKU master data.`);
+}
+
+// Soft delete only: flips active:false, never removes the record. Every
+// past cutting/outsourcing entry that already referenced this SKU keeps
+// working, and the SKU itself simply stops showing up in future pick-lists
+// and estimation lookups.
+function deleteEstimationSku() {
+  if (!estimationMasterId) return;
+  const record = state.skuMaster.find((item) => item.id === estimationMasterId);
+  if (!record) return;
+  if (!confirm(`Delete "${record.commonName}" (${record.sku}) from SKU master data? It stays soft-deleted \u2014 past cutting/outsourcing entries that reference it are unaffected, and you can recreate it later if needed.`)) return;
+  record.active = false;
+  saveState();
+  estimationSource = "new";
+  estimationMasterId = null;
+  estimationComponents = [];
+  renderEstimationComponents();
+  alert(`"${record.commonName}" removed from active SKUs.`);
 }
 
 function getFabricRemainingAtCode(code) {
@@ -1349,9 +1557,30 @@ function formatMoney(value) {
   });
 }
 
+// Dynamic, founder-editable SKU master (state.skuMaster) always takes
+// precedence over the static, build-time BACKEND_DATA when both define the
+// same SKU — it's the more recently confirmed source. Soft-deleted
+// (active:false) records are excluded here so a deleted SKU stops
+// surfacing in every "existing SKU" lookup across the app, without the
+// record itself (or anything that already referenced it) being removed.
+function findSkuMasterBySku(sku) {
+  const needle = String(sku || "").trim().toLowerCase();
+  if (!needle) return null;
+  return state.skuMaster.find((item) => item.active && item.sku.toLowerCase() === needle);
+}
+
+function findSkuMasterByCommonName(commonName) {
+  const needle = String(commonName || "").trim().toLowerCase();
+  if (!needle) return null;
+  return state.skuMaster.find((item) => item.active && item.commonName.toLowerCase() === needle) ||
+    state.skuMaster.find((item) => item.active && item.commonName.toLowerCase().includes(needle));
+}
+
 function findSkuByCommonName(commonName) {
   const needle = String(commonName || "").trim().toLowerCase();
   if (!needle) return null;
+  const master = findSkuMasterByCommonName(commonName);
+  if (master) return { sku: master.sku, commonName: master.commonName };
   return BACKEND_DATA.skuDatabase.find((item) => item.commonName.toLowerCase() === needle) ||
     BACKEND_DATA.skuDatabase.find((item) => item.commonName.toLowerCase().includes(needle));
 }
@@ -1359,6 +1588,8 @@ function findSkuByCommonName(commonName) {
 function findSkuByCode(sku) {
   const needle = String(sku || "").trim().toLowerCase();
   if (!needle) return null;
+  const master = findSkuMasterBySku(sku);
+  if (master) return { sku: master.sku, commonName: master.commonName };
   return BACKEND_DATA.skuDatabase.find((item) => item.sku.toLowerCase() === needle);
 }
 
@@ -1659,6 +1890,9 @@ function allSkuRecords() {
   const map = new Map();
   BACKEND_DATA.skuDatabase.forEach((item) => map.set(item.sku, item.commonName));
   state.cuttings.forEach((cutting) => map.set(cutting.sku, cutting.commonName));
+  // Dynamic master records last, so a founder-saved SKU's current common
+  // name wins over anything stale that shares its SKU code.
+  state.skuMaster.filter((item) => item.active).forEach((item) => map.set(item.sku, item.commonName));
   return Array.from(map.entries()).map(([sku, commonName]) => ({ sku, commonName }));
 }
 
@@ -3622,7 +3856,10 @@ function bindEvents() {
     applySkuToEstimationForm(findSkuByCode(event.target.value));
   });
 
-  const ESTIMATION_LIVE_ROLES = new Set(["avgUsed", "avgUsedUnit", "garmentPieces", "garmentType", "garmentLabel"]);
+  const ESTIMATION_LIVE_ROLES = new Set([
+    "avgUsed", "avgUsedUnit", "garmentPieces", "garmentType", "garmentLabel",
+    "role", "fabricName", "printType", "colour"
+  ]);
   $("#estimationForm").addEventListener("input", (event) => {
     if (ESTIMATION_LIVE_ROLES.has(event.target.dataset.role)) updateEstimationCalc();
   });
@@ -3649,9 +3886,30 @@ function bindEvents() {
     updateEstimationCalc();
   });
 
-  // No submit button (this tab only calculates, never saves) — but a form
-  // with a single focused text field still submits on Enter in some
-  // browsers, which would reload the page. Swallow it.
+  $("#addEstimationComponentRowBtn").addEventListener("click", () => {
+    addEstimationComponentRow();
+    if (window.lucide) window.lucide.createIcons();
+    updateEstimationCalc();
+  });
+
+  $("#estimationComponentsContainer").addEventListener("click", (event) => {
+    const removeBtn = event.target.closest("[data-remove-estimation-row]");
+    if (!removeBtn) return;
+    removeBtn.closest(".estimation-row").remove();
+    if (!$$(".estimation-row").length) {
+      $("#estimationComponentsContainer").innerHTML =
+        `<p class="estimation-empty">No fabric parts left \u2014 use "Add fabric part" to build this SKU's requirement.</p>`;
+    }
+    updateEstimationCalc();
+  });
+
+  $("#saveEstimationSkuBtn").addEventListener("click", saveEstimationSku);
+  $("#deleteEstimationSkuBtn").addEventListener("click", deleteEstimationSku);
+
+  // No native submit action (saving happens through the explicit "Save
+  // this SKU" button above) — but a form with a single focused text field
+  // still submits on Enter in some browsers, which would reload the page.
+  // Swallow it.
   $("#estimationForm").addEventListener("submit", (event) => event.preventDefault());
 
   $("#cuttingForm").addEventListener("submit", (event) => {
