@@ -326,14 +326,18 @@
       <div class="section-heading">
         <div>
           <h2>Fabric estimation</h2>
-          <p>Pick a common name or SKU (or start typing a new one) and how many pieces you want to produce &mdash; break the style into its fabric parts (Top, Bottom, Lining, Overall/Misc, or any part you name), see what each part needs, and whether current stock covers THAT part. Save the parts as this SKU's master data so you never have to re-enter them.</p>
+          <p>Pick a common name or SKU (or start typing a new one) and how many pieces you want to produce. The trims database supplies each part and its avg used/piece for a known style; Fabric 1/2's name, print, and colour auto-fill from the SKU code. See what each part needs, and whether current stock covers THAT part. Save the parts to the trims database so a new SKU never has to be re-entered.</p>
         </div>
       </div>
       <datalist id="estimationRoleSuggestions">
-        <option value="Top"></option>
-        <option value="Bottom"></option>
-        <option value="Lining"></option>
-        <option value="Overall/Misc"></option>
+        <option value="Fabric 1"></option>
+        <option value="Fabric 2"></option>
+        <option value="Lace"></option>
+        <option value="Dori"></option>
+        <option value="Embroidery"></option>
+        <option value="Gota"></option>
+        <option value="Tassel"></option>
+        <option value="Buttons"></option>
       </datalist>
       <form class="cutting-layout" id="estimationForm">
         <div class="form-grid compact">
@@ -343,10 +347,10 @@
         <p class="estimation-master-status new" id="estimationMasterStatus" hidden>New SKU &mdash; not saved yet.</p>
         <div class="fabric-components-section">
           <div class="fabric-components-header">
-            <span>Fabric parts <small>One row per part of this style that uses its own fabric &mdash; Top, Bottom, Lining, Overall/Misc, or a custom part. Each part's avg used/piece is checked against that part's OWN stock; parts are never combined for the sufficiency check.</small></span>
+            <span>Fabric &amp; trim parts <small>One row per part of this style &mdash; Fabric 1/2, or any trim (Lace, Dori, Embroidery, Gota, Tassel, Buttons&hellip;). Fabric 1/2's name/print/colour auto-fill from the SKU code once it matches; trims come from the trims database once the common name/SKU matches, or type your own for a new part. Each part's avg used/piece is checked against that part's OWN stock; parts are never combined for the sufficiency check.</small></span>
             <button class="secondary-action" type="button" id="addEstimationComponentRowBtn">
               <i data-lucide="plus" aria-hidden="true"></i>
-              Add fabric part
+              Add part
             </button>
           </div>
           <div class="fabric-row-legend estimation-row-legend" aria-hidden="true">
@@ -360,21 +364,8 @@
             <p class="estimation-empty">Pick a common name or SKU above, or start typing a new one, to build its fabric requirement.</p>
           </div>
         </div>
-        <div class="fabric-components-section" id="estimationGarmentsSection">
-          <div class="fabric-components-header">
-            <span>Garments produced<span class="req">*</span> <small>Add a row per garment you want to produce (e.g. Kurta + Pant cut as a set). For a set cut from shared rolls, each part's average above already covers the whole set &mdash; it's applied once per set, not once per garment.</small></span>
-            <button class="secondary-action" type="button" id="addEstimationGarmentRowBtn">
-              <i data-lucide="plus" aria-hidden="true"></i>
-              Add garment
-            </button>
-          </div>
-          <div class="estimation-garment-legend" aria-hidden="true">
-            <span>Garment type</span>
-            <span>Label (optional)</span>
-            <span>Pieces<span class="req">*</span></span>
-            <span></span>
-          </div>
-          <div id="estimationGarmentsContainer"></div>
+        <div class="form-grid compact">
+          <label>Pieces to produce<span class="req">*</span> <input class="hl-input" name="pieces" type="number" min="0" step="1" placeholder="e.g. 40"></label>
         </div>
         <div class="calculation-strip" id="estimationSummary">
           <span>Producing: <strong id="estimationPiecesSummary">&mdash;</strong></span>
@@ -843,6 +834,7 @@
        It must set window.PEEKAABOO_SUPABASE = { url, anonKey } before app.js loads. -->
   <script src="supabase-config.js"></script>
   <script src="sku-database.js"></script>
+  <script src="trims-database.js"></script>
   <script src="accessory-rules.js"></script>
   <script src="app.js?v=20260812b"></script>
 </body>
