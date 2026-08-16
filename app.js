@@ -1129,6 +1129,37 @@ let estimationSource = "new"; // "trims" | "trims-seed" | "legacy" | "new"
 let estimationMasterId = null;
 let estimationRowSeq = 0;
 
+// This SKU's known base-fabric identities (Fabric 1 / Fabric 2, looked up
+// from BACKEND_DATA.fabricDatabase by SKU code — same source
+// buildLegacyEstimationComponents uses). Set once per SKU load in
+// applySkuToEstimationForm and read by every row's "Suggested fabric"
+// dropdown, so a 2-fabric coord set (e.g. kurta + jacket) shows exactly
+// those 2 options instead of every fabric name/print/colour combo ever
+// stocked — narrows the field instead of guessing which part uses which.
+let estimationFabricChoices = [];
+
+// Builds the narrowed fabric option list for the currently loaded SKU.
+// Deduplicates Fabric 1/2 when they're identical (same guard as
+// buildLegacyEstimationComponents uses for the legacy rows themselves).
+function getSkuFabricChoices(skuRecord) {
+  const fabricRecord = findFabricBySku(skuRecord?.sku);
+  if (!fabricRecord) return [];
+  const choices = [];
+  if (fabricRecord.fabric) {
+    choices.push({
+      label: `Fabric 1 \u2014 ${[fabricRecord.fabric, fabricRecord.printType, fabricRecord.colour].filter(Boolean).join(" / ")}`,
+      name: fabricRecord.fabric, printType: fabricRecord.printType || "", colour: fabricRecord.colour || ""
+    });
+  }
+  if (fabricRecord.fabric2 && fabricIdentityKey({ name: fabricRecord.fabric2, printType: fabricRecord.printType2, colour: fabricRecord.colour2 }) !== fabricIdentityKey({ name: fabricRecord.fabric, printType: fabricRecord.printType, colour: fabricRecord.colour })) {
+    choices.push({
+      label: `Fabric 2 \u2014 ${[fabricRecord.fabric2, fabricRecord.printType2, fabricRecord.colour2].filter(Boolean).join(" / ")}`,
+      name: fabricRecord.fabric2, printType: fabricRecord.printType2 || "", colour: fabricRecord.colour2 || ""
+    });
+  }
+  return choices;
+}
+
 function buildLegacyEstimationComponents(fabricRecord) {
   if (!fabricRecord) return [];
   const reqs = [];
@@ -1159,9 +1190,22 @@ function findTrimsSeed(sku, commonName) {
   }
   const nameNeedle = String(commonName || "").trim().toLowerCase();
   if (!nameNeedle) return null;
-  return TRIMS_DATABASE.find((item) => item.commonName.toLowerCase() === nameNeedle) ||
-    TRIMS_DATABASE.find((item) => item.commonName.toLowerCase().includes(nameNeedle) || nameNeedle.includes(item.commonName.toLowerCase())) ||
-    null;
+  // trims-database.js's commonName was authored independently of
+  // sku-database.js's (different sheet, different person, different
+  // wording — "Mehandi wali" vs "Mehendi Dress Green") so exact/substring
+  // matching alone misses real matches that are just spelled differently.
+  // Reuses the same typo-tolerant scorer the on-screen SKU/common-name
+  // autocomplete already uses, so "closeness" here means the same thing
+  // it means everywhere else in the app. Falls back to the exact/
+  // substring rule as a floor — fuzzyMatchScore already returns 1000/900+
+  // for those cases, so this subsumes rather than replaces the old logic.
+  let best = null;
+  let bestScore = -Infinity;
+  TRIMS_DATABASE.forEach((item) => {
+    const score = fuzzyMatchScore(nameNeedle, item.commonName);
+    if (score > bestScore) { bestScore = score; best = item; }
+  });
+  return best;
 }
 
 // Only length units (cm/m — the two the estimator's own unit selector
@@ -1241,6 +1285,25 @@ function addEstimationComponentRow(component = {}) {
   wrapper.className = "fabric-component-row estimation-row";
   wrapper.dataset.rowId = id;
   wrapper.dataset.componentId = component.id || crypto.randomUUID();
+
+  // Which of this SKU's known fabrics (if any) this row's current
+  // name/print/colour already matches, so a row loaded from the trims
+  // database or the seed sheet opens on the right dropdown option instead
+  // of defaulting to "Custom" every time.
+  const matchedChoiceIndex = estimationFabricChoices.findIndex((choice) =>
+    choice.name.toLowerCase() === String(component.name || "").toLowerCase() &&
+    (choice.printType || "").toLowerCase() === String(component.printType || "").toLowerCase() &&
+    (choice.colour || "").toLowerCase() === String(component.colour || "").toLowerCase()
+  );
+  const fabricPickHtml = estimationFabricChoices.length ? `
+      <div class="fabric-pick-group">
+        <label class="fabric-pick-label" for="${id}-fabricPick">Suggested fabric</label>
+        <select data-role="fabricPick" id="${id}-fabricPick" aria-label="Which of this SKU's fabrics does this part use">
+          <option value="custom"${matchedChoiceIndex === -1 ? " selected" : ""}>Custom / trim material\u2026</option>
+          ${estimationFabricChoices.map((choice, idx) => `<option value="${idx}"${idx === matchedChoiceIndex ? " selected" : ""}>${escapeHtml(choice.label)}</option>`).join("")}
+        </select>
+      </div>` : "";
+
   wrapper.innerHTML = `
     <input class="hl-input" data-role="role" list="estimationRoleSuggestions" autocomplete="off" placeholder="e.g. Top" value="${escapeHtml(component.role || "")}">
     <input class="hl-input" data-role="fabricName" autocomplete="off" placeholder="Fabric name" value="${escapeHtml(component.name || "")}">
@@ -1250,6 +1313,7 @@ function addEstimationComponentRow(component = {}) {
       <i data-lucide="trash-2" aria-hidden="true"></i>
     </button>
     <div class="estimation-row-detail">
+      ${fabricPickHtml}
       <div class="avg-used-group">
         <input class="fabric-avg-used hl-input" data-role="avgUsed" type="number" min="0.01" step="0.1" placeholder="Avg used/piece \u2014 required" value="${component.avgUsedCm || ""}">
         <select class="avg-used-unit" data-role="avgUsedUnit" aria-label="Unit">
@@ -1266,6 +1330,24 @@ function addEstimationComponentRow(component = {}) {
   attachAutocomplete(wrapper.querySelector('[data-role="fabricName"]'), fabricNameOptions);
   attachAutocomplete(wrapper.querySelector('[data-role="printType"]'), printTypeOptions);
   attachAutocomplete(wrapper.querySelector('[data-role="colour"]'), colourOptions);
+
+  // Picking "Fabric 1"/"Fabric 2" fills this row's name/print/colour from
+  // the SKU's own known identity — "Custom" leaves whatever's already
+  // typed untouched (that's the trim-material path: Lace, Dori, etc.,
+  // which aren't one of the garment's base fabrics at all).
+  const fabricPick = wrapper.querySelector('[data-role="fabricPick"]');
+  if (fabricPick) {
+    fabricPick.addEventListener("change", (event) => {
+      if (event.target.value === "custom") return;
+      const choice = estimationFabricChoices[Number(event.target.value)];
+      if (!choice) return;
+      wrapper.querySelector('[data-role="fabricName"]').value = choice.name;
+      wrapper.querySelector('[data-role="printType"]').value = choice.printType;
+      wrapper.querySelector('[data-role="colour"]').value = choice.colour;
+      updateEstimationCalc();
+    });
+  }
+
   if (window.lucide) window.lucide.createIcons();
   return wrapper;
 }
@@ -1422,6 +1504,7 @@ function applySkuToEstimationForm(skuRecord) {
   estimationComponents = resolved.components;
   estimationSource = resolved.source;
   estimationMasterId = resolved.masterId;
+  estimationFabricChoices = getSkuFabricChoices(skuRecord);
   renderEstimationComponents();
 }
 
